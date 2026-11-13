@@ -1,0 +1,1318 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1a1016">
+<title>Что посмотрим</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-screen app in a velvet "screening room" — header, poster stack fills the middle, four verdict buttons at the bottom; a second view lists all marks */
+:root{
+  --bg:#1a1016; --surface:#24161e; --raise:#30202a; --line:#46323d;
+  --fg:#f4ebe6; --muted:#b5a2a9; --brass:#dcae63;
+  --like:#63c28f; --nope:#e66a62; --want:#dcae63; --skip:#9d96aa;
+  --f-display:"Oswald","Arial Narrow",Impact,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.4;overflow:hidden;
+  background-image:radial-gradient(120% 60% at 50% -10%, #3a1d2b 0%, transparent 60%)}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brand{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:.02em;text-transform:uppercase;line-height:1}
+.brand span{color:var(--brass)}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 14px;border-radius:999px;font-size:14px;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+
+.meta{display:flex;flex-direction:column;gap:6px}
+.meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;color:var(--muted)}
+.count{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--fg)}
+.bar{height:3px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brass);width:0;transition:width .3s}
+.status{display:inline-flex;align-items:center;gap:6px}
+.status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--skip)}
+.status[data-s="cloud"]::before{background:var(--like)}
+.status[data-s="error"]::before{background:var(--nope)}
+
+/* rating view */
+.stage{flex:1;min-height:0;position:relative;container-type:size;display:grid;place-items:center}
+.card{position:absolute;width:min(100%,380px,64cqh);aspect-ratio:2/3;max-height:100%;border-radius:18px;overflow:hidden;
+  container-type:size;display:flex;flex-direction:column;background:var(--ink);
+  touch-action:none;user-select:none;-webkit-user-select:none;will-change:transform;
+  box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.08)}
+.card.next{transform:scale(.94) translateY(14px);filter:brightness(.6)}
+.card.top{cursor:grab}
+.card.top:active{cursor:grabbing}
+.art{position:relative;flex:1 1 auto;min-height:26%;overflow:hidden}
+.art canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.art::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,var(--ink));pointer-events:none}
+.art-meta{position:absolute;inset:0 0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:16px 16px 0;z-index:1}
+.year{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,6.5cqh,42px);line-height:.9;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.45)}
+.decade{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:rgba(255,255,255,.8);text-transform:uppercase;margin-top:6px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.origin{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 7px;border:1px solid rgba(255,255,255,.55);border-radius:4px;color:#fff;background:rgba(0,0,0,.25)}
+.info{position:relative;z-index:1;flex:none;display:flex;flex-direction:column;gap:7px;padding:0 18px 16px;margin-top:-34px}
+.p-title{font-family:var(--f-display);font-weight:700;text-transform:uppercase;line-height:1.02;font-size:clamp(20px,5cqh,30px);
+  color:#fff;text-wrap:balance;letter-spacing:.005em;overflow-wrap:anywhere}
+.p-orig{font-size:13px;color:rgba(255,255,255,.62);margin-top:-3px}
+.p-desc{font-size:13.5px;line-height:1.42;color:rgba(255,255,255,.88);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.p-dir{font-size:12.5px;color:rgba(255,255,255,.8)}
+.p-dir b{font-weight:500;color:rgba(255,255,255,.55);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;margin-right:6px}
+.p-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chips span{font-size:11.5px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.1);color:#fff}
+.links{display:flex;gap:10px;font-size:12px}
+.links a{color:var(--brass);text-decoration:none;border-bottom:1px solid rgba(220,174,99,.4)}
+.links a:hover{border-bottom-color:var(--brass)}
+.p-cast{font-size:12.5px;color:rgba(255,255,255,.88);margin-top:-3px}
+.p-cast b{font-weight:500;color:rgba(255,255,255,.55);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;margin-right:6px}
+.art-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.poster-link{font-size:12px;font-weight:500;color:#fff;text-decoration:none;padding:5px 11px;border-radius:999px;
+  background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.poster-link:hover{background:rgba(0,0,0,.65);border-color:#fff}
+@container (max-height:520px){.p-desc{-webkit-line-clamp:3}}
+@container (max-height:450px){.p-dir{display:none}}
+@container (max-height:400px){.p-orig{display:none}}
+
+.stamp{position:absolute;top:26px;padding:6px 12px;border:3px solid currentColor;border-radius:8px;font-family:var(--f-display);font-weight:700;
+  font-size:24px;letter-spacing:.06em;text-transform:uppercase;opacity:0;pointer-events:none;background:rgba(0,0,0,.25)}
+.stamp.like{left:18px;color:var(--like);transform:rotate(-12deg)}
+.stamp.dislike{right:18px;color:var(--nope);transform:rotate(12deg)}
+.stamp.want{left:50%;top:auto;bottom:40%;color:var(--want);transform:translateX(-50%) rotate(-4deg)}
+.stamp.unseen{left:50%;top:38%;color:#fff;transform:translateX(-50%) rotate(4deg)}
+
+.done{text-align:center;max-width:34ch;display:flex;flex-direction:column;gap:10px;align-items:center}
+.done h2{font-family:var(--f-display);text-transform:uppercase;font-size:28px;margin:0;text-wrap:balance}
+.done p{margin:0;color:var(--muted)}
+
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.act{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:10px 4px 9px;font-size:12px;font-weight:500;line-height:1.15;text-align:center;transition:transform .1s,background .15s}
+.act:active{transform:scale(.96)}
+.act svg{width:22px;height:22px}
+.act[data-v="dislike"] svg{color:var(--nope)}
+.act[data-v="unseen"] svg{color:var(--skip)}
+.act[data-v="want"] svg{color:var(--want)}
+.act[data-v="like"] svg{color:var(--like)}
+.act:disabled{opacity:.35;cursor:default}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.undo{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}
+.undo:disabled{opacity:.35;cursor:default}
+.undo svg{width:14px;height:14px}
+
+/* marks view */
+.list-wrap{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.filters button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--muted)}
+.filters button[aria-pressed="true"]{border-color:var(--brass);color:var(--fg)}
+.filters .n{font-family:var(--f-mono);font-size:11px;margin-left:4px;opacity:.8}
+.list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:6px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.row .sw{width:6px;height:34px;border-radius:3px}
+.row .t{min-width:0}
+.row .t b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t small{color:var(--muted);font-size:12px}
+.row button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 10px;font-size:12px;color:var(--muted)}
+.empty{color:var(--muted);padding:24px 0;text-align:center}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand">Что <span>посмотрим</span></div>
+    <div class="seg" role="group" aria-label="Кто отмечает">
+      <button id="who-nadia" data-who="nadia" aria-pressed="true">Надя</button>
+      <button id="who-anton" data-who="anton" aria-pressed="false">Антон</button>
+    </div>
+  </header>
+
+  <div class="meta">
+    <div class="meta-row">
+      <span>Отмечено <span class="count" id="cnt">0 / 0</span></span>
+      <div class="seg" role="group" aria-label="Раздел">
+        <button id="view-rate" data-view="rate" aria-pressed="true">Оценка</button>
+        <button id="view-list" data-view="list" aria-pressed="false">Отметки</button>
+      </div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+
+  <section id="rateView" style="display:contents">
+    <div class="stage" id="stage"></div>
+    <div class="actions">
+      <button class="act" data-v="dislike" id="b-dislike"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Не понра&shy;вилось</span></button>
+      <button class="act" data-v="unseen" id="b-unseen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><path d="M4 20L20 4"/></svg><span id="unseenLbl">Не смотрела</span></button>
+      <button class="act" data-v="want" id="b-want"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span>Хочу посмотреть</span></button>
+      <button class="act" data-v="like" id="b-like"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.5-9.3C1.2 8.5 3.3 5 6.8 5c2 0 3.4 1.1 4.2 2.4h2C13.8 6.1 15.2 5 17.2 5c3.5 0 5.6 3.5 4.3 6.7C19.5 16.4 12 21 12 21z"/></svg><span>Понра&shy;вилось</span></button>
+    </div>
+    <div class="foot">
+      <span id="hint">Свайп: → понравилось, ← нет, ↑ хочу, ↓ не смотрела</span>
+      <button class="undo" id="undo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg>Назад</button>
+    </div>
+  </section>
+
+  <section id="listView" class="list-wrap" hidden>
+    <div class="filters" id="filters"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <div class="foot"><span class="status" id="status" data-s="local">Подключаюсь…</span></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+const RAW = `
+Побег из Шоушенка|The Shawshank Redemption|1994|Драма|Фрэнк Дарабонт
+Крёстный отец|The Godfather|1972|Криминал,Драма|Фрэнсис Форд Коппола
+Крёстный отец 2|The Godfather Part II|1974|Криминал,Драма|Фрэнсис Форд Коппола
+Тёмный рыцарь|The Dark Knight|2008|Боевик,Криминал|Кристофер Нолан
+Список Шиндлера|Schindler's List|1993|Биография,Драма,Военный|Стивен Спилберг
+Властелин колец: Братство Кольца|The Lord of the Rings: The Fellowship of the Ring|2001|Фэнтези,Приключения|Питер Джексон
+Властелин колец: Две крепости|The Lord of the Rings: The Two Towers|2002|Фэнтези,Приключения|Питер Джексон
+Властелин колец: Возвращение короля|The Lord of the Rings: The Return of the King|2003|Фэнтези,Приключения|Питер Джексон
+Криминальное чтиво|Pulp Fiction|1994|Криминал|Квентин Тарантино
+Бойцовский клуб|Fight Club|1999|Драма,Триллер|Дэвид Финчер
+Форрест Гамп|Forrest Gump|1994|Драма,Мелодрама|Роберт Земекис
+Начало|Inception|2010|Фантастика,Боевик|Кристофер Нолан
+Матрица|The Matrix|1999|Фантастика,Боевик|Лана и Лилли Вачовски
+Славные парни|Goodfellas|1990|Криминал,Биография|Мартин Скорсезе
+Интерстеллар|Interstellar|2014|Фантастика,Драма|Кристофер Нолан
+Семь|Se7en|1995|Триллер,Детектив|Дэвид Финчер
+Молчание ягнят|The Silence of the Lambs|1991|Триллер,Детектив|Джонатан Демме
+Зелёная миля|The Green Mile|1999|Драма,Фэнтези|Фрэнк Дарабонт
+Спасти рядового Райана|Saving Private Ryan|1998|Военный,Драма|Стивен Спилберг
+Унесённые призраками|Spirited Away|2001|Анимация,Фэнтези|Хаяо Миядзаки
+Паразиты|Parasite|2019|Триллер,Драма|Пон Джун-хо
+Леон|Leon: The Professional|1994|Боевик,Криминал|Люк Бессон
+Подозрительные лица|The Usual Suspects|1995|Криминал,Детектив|Брайан Сингер
+Престиж|The Prestige|2006|Триллер,Детектив|Кристофер Нолан
+Отступники|The Departed|2006|Криминал,Триллер|Мартин Скорсезе
+Гладиатор|Gladiator|2000|Боевик,Драма|Ридли Скотт
+Одержимость|Whiplash|2014|Драма|Дэмьен Шазелл
+1+1|Intouchables|2011|Комедия,Драма|Оливье Накаш, Эрик Толедано
+Король Лев|The Lion King|1994|Анимация,Семейный|Роджер Аллерс, Роб Минкофф
+Назад в будущее|Back to the Future|1985|Фантастика,Приключения,Комедия|Роберт Земекис
+Американская история X|American History X|1998|Драма|Тони Кэй
+Пианист|The Pianist|2002|Биография,Драма,Военный|Роман Полански
+Психо|Psycho|1960|Ужасы,Триллер|Альфред Хичкок
+Окно во двор|Rear Window|1954|Триллер,Детектив|Альфред Хичкок
+Касабланка|Casablanca|1942|Мелодрама,Драма|Майкл Кёртис
+Чужой|Alien|1979|Ужасы,Фантастика|Ридли Скотт
+Чужие|Aliens|1986|Фантастика,Боевик|Джеймс Кэмерон
+Апокалипсис сегодня|Apocalypse Now|1979|Военный,Драма|Фрэнсис Форд Коппола
+Сияние|The Shining|1980|Ужасы|Стэнли Кубрик
+Джанго освобождённый|Django Unchained|2012|Вестерн,Драма|Квентин Тарантино
+ВАЛЛ-И|WALL-E|2008|Анимация,Фантастика|Эндрю Стэнтон
+Жизнь других|The Lives of Others|2006|Драма,Триллер|Флориан Хенкель фон Доннерсмарк
+Олдбой|Oldboy|2003|Триллер,Детектив|Пак Чхан-ук
+Хороший, плохой, злой|The Good, the Bad and the Ugly|1966|Вестерн|Серджо Леоне
+Однажды на Диком Западе|Once Upon a Time in the West|1968|Вестерн|Серджо Леоне
+Мстители: Финал|Avengers: Endgame|2019|Боевик,Фантастика|Энтони и Джо Руссо
+Джокер|Joker|2019|Драма,Криминал|Тодд Филлипс
+Бесславные ублюдки|Inglourious Basterds|2009|Военный,Боевик|Квентин Тарантино
+Красота по-американски|American Beauty|1999|Драма|Сэм Мендес
+Тайна Коко|Coco|2017|Анимация,Семейный|Ли Анкрич
+Вверх|Up|2009|Анимация,Приключения|Пит Доктер
+Головоломка|Inside Out|2015|Анимация,Семейный|Пит Доктер
+Достать ножи|Knives Out|2019|Детектив,Комедия|Райан Джонсон
+Остров проклятых|Shutter Island|2010|Триллер,Детектив|Мартин Скорсезе
+Волк с Уолл-стрит|The Wolf of Wall Street|2013|Биография,Комедия|Мартин Скорсезе
+Отель «Гранд Будапешт»|The Grand Budapest Hotel|2014|Комедия,Приключения|Уэс Андерсон
+Бегущий по лезвию|Blade Runner|1982|Фантастика|Ридли Скотт
+Бегущий по лезвию 2049|Blade Runner 2049|2017|Фантастика,Драма|Дени Вильнёв
+Дюна|Dune|2021|Фантастика,Приключения|Дени Вильнёв
+Дюна: Часть вторая|Dune: Part Two|2024|Фантастика,Приключения|Дени Вильнёв
+Оппенгеймер|Oppenheimer|2023|Биография,Драма|Кристофер Нолан
+Безумный Макс: Дорога ярости|Mad Max: Fury Road|2015|Боевик,Фантастика|Джордж Миллер
+Прибытие|Arrival|2016|Фантастика,Драма|Дени Вильнёв
+Ла-Ла Ленд|La La Land|2016|Мюзикл,Мелодрама|Дэмьен Шазелл
+Вечное сияние чистого разума|Eternal Sunshine of the Spotless Mind|2004|Мелодрама,Фантастика|Мишель Гондри
+Амели|Amelie|2001|Комедия,Мелодрама|Жан-Пьер Жёне
+Большой Лебовски|The Big Lebowski|1998|Комедия,Криминал|Джоэл и Итан Коэн
+Старикам тут не место|No Country for Old Men|2007|Триллер,Криминал|Джоэл и Итан Коэн
+Фарго|Fargo|1996|Криминал,Комедия|Джоэл и Итан Коэн
+Карты, деньги, два ствола|Lock, Stock and Two Smoking Barrels|1998|Криминал,Комедия|Гай Ричи
+Большой куш|Snatch|2000|Криминал,Комедия|Гай Ричи
+Шоу Трумана|The Truman Show|1998|Драма,Комедия|Питер Уир
+День сурка|Groundhog Day|1993|Комедия,Мелодрама|Гарольд Рэмис
+Терминатор 2: Судный день|Terminator 2: Judgment Day|1991|Боевик,Фантастика|Джеймс Кэмерон
+Титаник|Titanic|1997|Мелодрама,Драма|Джеймс Кэмерон
+Аватар|Avatar|2009|Фантастика,Приключения|Джеймс Кэмерон
+Парк юрского периода|Jurassic Park|1993|Приключения,Фантастика|Стивен Спилберг
+Индиана Джонс: В поисках утраченного ковчега|Raiders of the Lost Ark|1981|Приключения,Боевик|Стивен Спилберг
+Звёздные войны: Новая надежда|Star Wars|1977|Фантастика,Приключения|Джордж Лукас
+Звёздные войны: Империя наносит ответный удар|The Empire Strikes Back|1980|Фантастика,Приключения|Ирвин Кершнер
+Челюсти|Jaws|1975|Триллер,Приключения|Стивен Спилберг
+Один дома|Home Alone|1990|Комедия,Семейный|Крис Коламбус
+Гарри Поттер и философский камень|Harry Potter and the Sorcerer's Stone|2001|Фэнтези,Семейный|Крис Коламбус
+Гарри Поттер и узник Азкабана|Harry Potter and the Prisoner of Azkaban|2004|Фэнтези,Приключения|Альфонсо Куарон
+Пираты Карибского моря: Проклятие «Чёрной жемчужины»|Pirates of the Caribbean: The Curse of the Black Pearl|2003|Приключения,Фэнтези|Гор Вербински
+Шрэк|Shrek|2001|Анимация,Комедия|Эндрю Адамсон, Вики Дженсон
+История игрушек|Toy Story|1995|Анимация,Комедия|Джон Лассетер
+Ходячий замок|Howl's Moving Castle|2004|Анимация,Фэнтези|Хаяо Миядзаки
+Принцесса Мононоке|Princess Mononoke|1997|Анимация,Фэнтези|Хаяо Миядзаки
+Мой сосед Тоторо|My Neighbor Totoro|1988|Анимация,Семейный|Хаяо Миядзаки
+Человек-паук: Через вселенные|Spider-Man: Into the Spider-Verse|2018|Анимация,Боевик|Боб Персичетти, Питер Рэмси, Родни Ротман
+Зверополис|Zootopia|2016|Анимация,Комедия|Байрон Ховард, Рич Мур
+Как приручить дракона|How to Train Your Dragon|2010|Анимация,Приключения|Дин ДеБлуа, Крис Сандерс
+Рататуй|Ratatouille|2007|Анимация,Комедия|Брэд Бёрд
+В поисках Немо|Finding Nemo|2003|Анимация,Приключения|Эндрю Стэнтон
+Корпорация монстров|Monsters, Inc.|2001|Анимация,Комедия|Пит Доктер
+Гравитация|Gravity|2013|Фантастика,Триллер|Альфонсо Куарон
+Марсианин|The Martian|2015|Фантастика,Приключения|Ридли Скотт
+Исчезнувшая|Gone Girl|2014|Триллер,Детектив|Дэвид Финчер
+Социальная сеть|The Social Network|2010|Биография,Драма|Дэвид Финчер
+Зодиак|Zodiac|2007|Детектив,Триллер|Дэвид Финчер
+Пленницы|Prisoners|2013|Триллер,Детектив|Дени Вильнёв
+Убийца|Sicario|2015|Триллер,Криминал|Дени Вильнёв
+Нефть|There Will Be Blood|2007|Драма|Пол Томас Андерсон
+Игра в имитацию|The Imitation Game|2014|Биография,Драма|Мортен Тильдум
+Игры разума|A Beautiful Mind|2001|Биография,Драма|Рон Ховард
+Поймай меня, если сможешь|Catch Me If You Can|2002|Биография,Криминал|Стивен Спилберг
+Терминал|The Terminal|2004|Комедия,Драма|Стивен Спилберг
+Шестое чувство|The Sixth Sense|1999|Триллер,Ужасы|М. Найт Шьямалан
+Другие|The Others|2001|Ужасы,Детектив|Алехандро Аменабар
+Изгоняющий дьявола|The Exorcist|1973|Ужасы|Уильям Фридкин
+Прочь|Get Out|2017|Ужасы,Триллер|Джордан Пил
+Реинкарнация|Hereditary|2018|Ужасы|Ари Астер
+Солнцестояние|Midsommar|2019|Ужасы|Ари Астер
+Нечто|The Thing|1982|Ужасы,Фантастика|Джон Карпентер
+Заклятие|The Conjuring|2013|Ужасы|Джеймс Ван
+Тихое место|A Quiet Place|2018|Ужасы,Фантастика|Джон Красински
+Ребёнок Розмари|Rosemary's Baby|1968|Ужасы|Роман Полански
+Субстанция|The Substance|2024|Ужасы,Фантастика|Корали Фаржа
+Дьявол носит Prada|The Devil Wears Prada|2006|Комедия,Драма|Дэвид Фрэнкел
+Реальная любовь|Love Actually|2003|Мелодрама,Комедия|Ричард Кёртис
+Дневник памяти|The Notebook|2004|Мелодрама|Ник Кассаветис
+Гордость и предубеждение|Pride & Prejudice|2005|Мелодрама,Драма|Джо Райт
+Красотка|Pretty Woman|1990|Мелодрама,Комедия|Гарри Маршалл
+Ноттинг Хилл|Notting Hill|1999|Мелодрама,Комедия|Роджер Мичелл
+Перед рассветом|Before Sunrise|1995|Мелодрама|Ричард Линклейтер
+Она|Her|2013|Мелодрама,Фантастика|Спайк Джонз
+Горбатая гора|Brokeback Mountain|2005|Мелодрама,Драма|Энг Ли
+Зови меня своим именем|Call Me by Your Name|2017|Мелодрама,Драма|Лука Гуаданьино
+Прошлые жизни|Past Lives|2023|Мелодрама,Драма|Селин Сон
+Анора|Anora|2024|Комедия,Драма|Шон Бейкер
+Всё везде и сразу|Everything Everywhere All at Once|2022|Фантастика,Комедия|Дэниел Кван, Дэниел Шайнерт
+Топ Ган: Мэверик|Top Gun: Maverick|2022|Боевик,Драма|Джозеф Косински
+Бедные-несчастные|Poor Things|2023|Комедия,Фантастика|Йоргос Лантимос
+Барби|Barbie|2023|Комедия,Фэнтези|Грета Гервиг
+Убийцы цветочной луны|Killers of the Flower Moon|2023|Криминал,Драма|Мартин Скорсезе
+Зона интересов|The Zone of Interest|2023|Драма,Военный|Джонатан Глейзер
+Анатомия падения|Anatomy of a Fall|2023|Драма,Детектив|Жюстин Трие
+Конклав|Conclave|2024|Триллер,Драма|Эдвард Бергер
+Бруталист|The Brutalist|2024|Драма|Брэди Корбет
+Банши Инишерина|The Banshees of Inisherin|2022|Драма,Комедия|Мартин Макдона
+Три билборда на границе Эббинга, Миссури|Three Billboards Outside Ebbing, Missouri|2017|Драма,Криминал|Мартин Макдона
+Залечь на дно в Брюгге|In Bruges|2008|Криминал,Комедия|Мартин Макдона
+Стражи Галактики|Guardians of the Galaxy|2014|Фантастика,Комедия|Джеймс Ганн
+Мстители: Война бесконечности|Avengers: Infinity War|2018|Боевик,Фантастика|Энтони и Джо Руссо
+Железный человек|Iron Man|2008|Боевик,Фантастика|Джон Фавро
+Логан|Logan|2017|Боевик,Драма|Джеймс Мэнголд
+Дэдпул|Deadpool|2016|Боевик,Комедия|Тим Миллер
+Бэтмен|The Batman|2022|Детектив,Боевик|Мэтт Ривз
+Миссия невыполнима: Последствия|Mission: Impossible - Fallout|2018|Боевик,Триллер|Кристофер Маккуорри
+Джон Уик|John Wick|2014|Боевик|Чад Стахелски
+Казино «Рояль»|Casino Royale|2006|Боевик,Приключения|Мартин Кэмпбелл
+Крепкий орешек|Die Hard|1988|Боевик|Джон Мактирнан
+Схватка|Heat|1995|Криминал,Боевик|Майкл Манн
+Таксист|Taxi Driver|1976|Драма,Криминал|Мартин Скорсезе
+Однажды в Америке|Once Upon a Time in America|1984|Криминал,Драма|Серджо Леоне
+Лицо со шрамом|Scarface|1983|Криминал,Драма|Брайан Де Пальма
+Однажды в… Голливуде|Once Upon a Time in Hollywood|2019|Комедия,Драма|Квентин Тарантино
+Бешеные псы|Reservoir Dogs|1992|Криминал,Триллер|Квентин Тарантино
+Убить Билла|Kill Bill: Vol. 1|2003|Боевик,Криминал|Квентин Тарантино
+Пролетая над гнездом кукушки|One Flew Over the Cuckoo's Nest|1975|Драма|Милош Форман
+Заводной апельсин|A Clockwork Orange|1971|Драма,Фантастика,Криминал|Стэнли Кубрик
+Космическая одиссея 2001 года|2001: A Space Odyssey|1968|Фантастика|Стэнли Кубрик
+Цельнометаллическая оболочка|Full Metal Jacket|1987|Военный,Драма|Стэнли Кубрик
+1917|1917|2019|Военный,Драма|Сэм Мендес
+Дюнкерк|Dunkirk|2017|Военный,Драма|Кристофер Нолан
+По соображениям совести|Hacksaw Ridge|2016|Военный,Биография|Мэл Гибсон
+Храброе сердце|Braveheart|1995|Биография,Драма,Военный|Мэл Гибсон
+На Западном фронте без перемен|All Quiet on the Western Front|2022|Военный,Драма|Эдвард Бергер
+Жизнь прекрасна|Life Is Beautiful|1997|Комедия,Драма,Военный|Роберто Бениньи
+Унесённые ветром|Gone with the Wind|1939|Мелодрама,Драма|Виктор Флеминг
+Богемская рапсодия|Bohemian Rhapsody|2018|Биография,Мюзикл|Брайан Сингер
+Великий Гэтсби|The Great Gatsby|2013|Драма,Мелодрама|Баз Лурман
+Мулен Руж|Moulin Rouge!|2001|Мюзикл,Мелодрама|Баз Лурман
+Величайший шоумен|The Greatest Showman|2017|Мюзикл,Биография|Майкл Грэйси
+Маленькая мисс Счастье|Little Miss Sunshine|2006|Комедия,Драма|Джонатан Дэйтон, Валери Фэрис
+Зелёная книга|Green Book|2018|Биография,Комедия|Питер Фаррелли
+Отпуск по обмену|The Holiday|2006|Мелодрама,Комедия|Нэнси Мейерс
+Мальчишник в Вегасе|The Hangover|2009|Комедия|Тодд Филлипс
+SuperПерцы|Superbad|2007|Комедия|Грег Моттола
+Мы — Миллеры|We're the Millers|2013|Комедия,Криминал|Роусон Маршалл Тёрбер
+Дневник Бриджит Джонс|Bridget Jones's Diary|2001|Комедия,Мелодрама|Шэрон Магуайр
+Мистер и миссис Смит|Mr. & Mrs. Smith|2005|Боевик,Комедия|Даг Лайман
+Ирония судьбы, или С лёгким паром!|Ironiya sudby|1975|Комедия,Мелодрама|Эльдар Рязанов|su
+Москва слезам не верит|Moskva slezam ne verit|1979|Мелодрама,Драма|Владимир Меньшов|su
+Иван Васильевич меняет профессию|Ivan Vasilievich menyaet professiyu|1973|Комедия,Фантастика|Леонид Гайдай|su
+Бриллиантовая рука|Brilliantovaya ruka|1968|Комедия,Криминал|Леонид Гайдай|su
+Служебный роман|Sluzhebny roman|1977|Комедия,Мелодрама|Эльдар Рязанов|su
+Джентльмены удачи|Dzhentlmeny udachi|1971|Комедия,Криминал|Александр Серый|su
+Кин-дза-дза!|Kin-dza-dza|1986|Фантастика,Комедия|Георгий Данелия|su
+Собачье сердце|Sobachye serdtse|1988|Драма,Фантастика,Комедия|Владимир Бортко|su
+Сталкер|Stalker|1979|Фантастика,Драма|Андрей Тарковский|su
+Брат|Brat|1997|Криминал,Драма|Алексей Балабанов|su
+Левиафан|Leviathan|2014|Драма|Андрей Звягинцев|su
+Нелюбовь|Loveless|2017|Драма|Андрей Звягинцев|su
+Город бога|City of God|2002|Криминал,Драма|Фернанду Мейреллиш
+Лабиринт Фавна|Pan's Labyrinth|2006|Фэнтези,Драма,Военный|Гильермо дель Торо
+Форма воды|The Shape of Water|2017|Фэнтези,Мелодрама|Гильермо дель Торо
+Тайна в его глазах|The Secret in Their Eyes|2009|Детектив,Драма|Хуан Хосе Кампанелла
+Охота|The Hunt|2012|Драма|Томас Винтерберг
+Ещё по одной|Another Round|2020|Комедия,Драма|Томас Винтерберг
+Брачная история|Marriage Story|2019|Драма|Ноа Баумбах
+Леди Бёрд|Lady Bird|2017|Комедия,Драма|Грета Гервиг
+Маленькие женщины|Little Women|2019|Драма,Мелодрама|Грета Гервиг
+Лунный свет|Moonlight|2016|Драма|Барри Дженкинс
+Достучаться до небес|Knockin' on Heaven's Door|1997|Комедия,Криминал,Драма|Томас Ян
+Беги, Лола, беги|Run Lola Run|1998|Триллер,Криминал|Том Тыквер
+Довод|Tenet|2020|Фантастика,Боевик|Кристофер Нолан
+Помни|Memento|2000|Триллер,Детектив|Кристофер Нолан
+Пятый элемент|The Fifth Element|1997|Фантастика,Боевик|Люк Бессон
+Район №9|District 9|2009|Фантастика,Боевик|Нил Бломкамп
+Грань будущего|Edge of Tomorrow|2014|Фантастика,Боевик|Даг Лайман
+Дитя человеческое|Children of Men|2006|Фантастика,Драма|Альфонсо Куарон
+Из машины|Ex Machina|2014|Фантастика,Триллер|Алекс Гарленд
+50 первых поцелуев|50 First Dates|2004|Комедия,Мелодрама|Питер Сигал
+Король говорит!|The King's Speech|2010|Биография,Драма|Том Хупер
+Выживший|The Revenant|2015|Приключения,Драма|Алехандро Гонсалес Иньярриту
+Бёрдмэн|Birdman|2014|Комедия,Драма|Алехандро Гонсалес Иньярриту
+Ford против Ferrari|Ford v Ferrari|2019|Биография,Драма|Джеймс Мэнголд
+Гонка|Rush|2013|Биография,Драма|Рон Ховард
+Джентльмены|The Gentlemen|2019|Криминал,Комедия|Гай Ричи
+Одиннадцать друзей Оушена|Ocean's Eleven|2001|Криминал,Комедия|Стивен Содерберг
+`.trim().split('\n');
+
+const PALETTE = {
+  "Драма":["#2b1520","#8a3b4e"],"Криминал":["#11151c","#3d5064"],"Триллер":["#161a12","#5a6640"],
+  "Боевик":["#26110a","#b4521f"],"Фантастика":["#0b1825","#2c6e90"],"Фэнтези":["#1a1330","#5d3f91"],
+  "Комедия":["#2e2006","#cc931c"],"Мелодрама":["#33111f","#c1546d"],"Ужасы":["#100607","#6e1414"],
+  "Анимация":["#0c2626","#2d9a88"],"Военный":["#191c12","#606b44"],"Биография":["#251d14","#8d6c47"],
+  "Приключения":["#0e2318","#3f8a57"],"Мюзикл":["#270d2b","#a249aa"],"Детектив":["#16161f","#565680"],
+  "Вестерн":["#2a170a","#a8682e"],"Семейный":["#0f2236","#4a86c5"]
+};
+
+function slug(orig, year){
+  return (orig + '-' + year).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+const MOVIES = RAW.map(line => {
+  const [ru, orig, year, genres, dir, tag] = line.split('|').map(s => s.trim());
+  return { id: slug(orig, year), ru, orig, year: +year, genres: genres.split(','), dir, ru_origin: tag === 'su' };
+});
+// Stable mixed order (same on every device) so genres alternate while rating
+(function shuffle(arr, seed){
+  let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+})(MOVIES, 20261108);
+const BY_ID = Object.fromEntries(MOVIES.map(m => [m.id, m]));
+
+const DESC_RAW = `
+The Shawshank Redemption|Банкир, осуждённый за убийство жены, годами выживает в жестокой тюрьме Шоушенк и находит друга в старом заключённом Реде.
+The Godfather|Стареющий дон мафиозного клана Корлеоне передаёт дела младшему сыну Майклу, который вовсе не собирался в семейный бизнес.
+The Godfather Part II|Майкл Корлеоне укрепляет империю семьи, а параллельно разворачивается история молодости его отца Вито в Нью-Йорке начала века.
+The Dark Knight|Бэтмен, комиссар Гордон и прокурор Харви Дент противостоят Джокеру, который погружает Готэм в хаос.
+Schindler's List|Немецкий промышленник Оскар Шиндлер спасает больше тысячи евреев, нанимая их на свою фабрику во время Холокоста.
+The Lord of the Rings: The Fellowship of the Ring|Хоббит Фродо получает Кольцо Всевластья и вместе с отрядом спутников отправляется уничтожить его.
+The Lord of the Rings: The Two Towers|Братство распалось: Фродо и Сэм идут к Мордору с Голлумом, остальные защищают Рохан от армии Сарумана.
+The Lord of the Rings: The Return of the King|Решающая битва за Средиземье у стен Минас Тирита, пока Фродо и Сэм пробираются к Роковой горе.
+Pulp Fiction|Переплетённые истории двух киллеров, боксёра, жены гангстера и пары грабителей в Лос-Анджелесе.
+Fight Club|Офисный клерк, измученный бессонницей, встречает харизматичного Тайлера Дёрдена, и вместе они основывают подпольный бойцовский клуб.
+Forrest Gump|Простодушный парень из Алабамы невольно оказывается в центре главных событий американской истории второй половины XX века.
+Inception|Вор, крадущий секреты из снов, получает обратное задание: внедрить идею в подсознание наследника корпорации.
+The Matrix|Хакер Нео узнаёт, что привычный мир — симуляция, созданная машинами, и присоединяется к сопротивлению.
+Goodfellas|Реальная история Генри Хилла, с юности мечтавшего стать гангстером, и его жизни внутри нью-йоркской мафии.
+Interstellar|Земля умирает, и бывший пилот NASA отправляется через червоточину искать человечеству новый дом.
+Se7en|Детектив-ветеран за неделю до пенсии и его молодой напарник расследуют серию убийств по семи смертным грехам.
+The Silence of the Lambs|Стажёр ФБР Кларис Старлинг просит помощи у заключённого психиатра-каннибала Ганнибала Лектера, чтобы поймать маньяка.
+The Green Mile|Надзиратель блока смертников встречает заключённого-великана Джона Коффи с необъяснимым даром исцеления.
+Saving Private Ryan|После высадки в Нормандии отряд капитана Миллера уходит за линию фронта, чтобы найти и вернуть домой рядового Райана.
+Spirited Away|Девочка Тихиро попадает в мир духов и устраивается работать в волшебную купальню, чтобы спасти родителей.
+Parasite|Бедная семья Ким по одному устраивается работать в дом богатых Паков, выдавая себя за посторонних людей.
+Leon: The Professional|Наёмный убийца нехотя берёт под защиту 12-летнюю Матильду, чью семью убил продажный полицейский.
+The Usual Suspects|Единственный выживший после бойни в порту рассказывает следователю о пятерых преступниках и легендарном Кайзере Сёзе.
+The Prestige|Соперничество двух иллюзионистов в викторианском Лондоне превращается в одержимость секретом идеального фокуса.
+The Departed|Полицейский под прикрытием внедрён в банду ирландского босса, а крот банды — в полицию; каждый пытается вычислить другого.
+Gladiator|Преданный римский генерал Максимус становится рабом-гладиатором и ищет мести императору Коммоду.
+Whiplash|Молодой барабанщик попадает к безжалостному преподавателю джаза, готовому сломать ученика ради величия.
+Intouchables|Парализованный аристократ нанимает в помощники парня из пригорода, только что вышедшего из тюрьмы, и это меняет обоих.
+The Lion King|Львёнок Симба после гибели отца убегает из родных земель, но однажды должен вернуться и занять своё место.
+Back to the Future|Подросток Марти Макфлай на машине времени попадает в 1955 год и случайно мешает знакомству собственных родителей.
+American History X|Бывший неонацист выходит из тюрьмы и пытается уберечь младшего брата от пути, который прошёл сам.
+The Pianist|Польский пианист Владислав Шпильман пытается выжить в оккупированной Варшаве.
+Psycho|Секретарша с украденными деньгами останавливается в уединённом мотеле, которым управляет странный молодой хозяин Норман Бейтс.
+Rear Window|Фотограф со сломанной ногой от скуки наблюдает за соседями через окно и начинает подозревать одного из них в убийстве.
+Casablanca|Владелец бара в военной Касабланке встречает бывшую возлюбленную, которой нужна его помощь, чтобы бежать вместе с мужем.
+Alien|Экипаж грузового корабля «Ностромо» откликается на сигнал бедствия и приносит на борт смертельно опасное существо.
+Aliens|Рипли возвращается на планету чужих вместе с отрядом космических десантников, чтобы выяснить, что случилось с колонистами.
+Apocalypse Now|Во время войны во Вьетнаме капитана Уилларда отправляют вверх по реке, чтобы устранить обезумевшего полковника Курца.
+The Shining|Писатель с семьёй нанимается зимним смотрителем в пустой отель в горах, где постепенно теряет рассудок.
+Django Unchained|Освобождённый раб становится охотником за головами вместе с немецким дантистом, чтобы вызволить жену у жестокого плантатора.
+WALL-E|Маленький робот-уборщик столетиями прибирает покинутую Землю, пока не встречает робота-разведчицу ЕВУ.
+The Lives of Others|Офицер Штази в ГДР 1984 года прослушивает квартиру драматурга и постепенно проникается жизнью тех, за кем следит.
+Oldboy|Мужчину без объяснений держат взаперти 15 лет, а потом отпускают, и у него пять дней, чтобы узнать почему.
+The Good, the Bad and the Ugly|Три стрелка во время Гражданской войны в США охотятся за спрятанным золотом конфедератов.
+Once Upon a Time in the West|Таинственный человек с губной гармоникой, бандит и вдова оказываются в центре борьбы за землю, через которую пройдёт железная дорога.
+Avengers: Endgame|После щелчка Таноса уцелевшие Мстители собираются в последний раз, чтобы вернуть исчезнувшую половину вселенной.
+Joker|Неудачливый комик Артур Флек, живущий с больной матерью в Готэме, постепенно превращается в Джокера.
+Inglourious Basterds|В оккупированной Франции отряд американских солдат и владелица кинотеатра готовят каждый свой план против нацистской верхушки.
+American Beauty|Офисный работник в кризисе среднего возраста резко переворачивает свою жизнь в благополучном пригороде.
+Coco|Мальчик Мигель мечтает стать музыкантом и в День мёртвых случайно попадает в мир предков.
+Up|Ворчливый вдовец привязывает к дому тысячи шариков и улетает в Южную Америку — с маленьким скаутом-безбилетником на крыльце.
+Inside Out|Эмоции 11-летней Райли — Радость, Печаль, Гнев, Страх и Брезгливость — помогают ей пережить переезд в новый город.
+Knives Out|Знаменитый автор детективов найден мёртвым после своего юбилея, и сыщик Бенуа Блан допрашивает его многочисленную семью.
+Shutter Island|В 1954 году маршал США приезжает на остров с психиатрической клиникой, чтобы найти сбежавшую пациентку.
+The Wolf of Wall Street|Взлёт и падение брокера Джордана Белфорта, сколотившего состояние на мошенничестве с акциями.
+The Grand Budapest Hotel|Легендарный консьерж отеля и его юный помощник оказываются втянуты в историю с украденной картиной и спорным наследством.
+Blade Runner|В Лос-Анджелесе 2019 года охотник Рик Декард выслеживает сбежавших репликантов — искусственных людей.
+Blade Runner 2049|Тридцать лет спустя новый бегущий по лезвию находит тайну, способную перевернуть устройство общества.
+Dune|Юный Пол Атрейдес с семьёй прибывает на пустынную планету Арракис — единственный источник самого ценного вещества во вселенной.
+Dune: Part Two|Пол объединяется с фрименами и Чани, чтобы отомстить тем, кто уничтожил его семью.
+Oppenheimer|История физика Роберта Оппенгеймера, руководившего созданием атомной бомбы, и цены этого открытия.
+Mad Max: Fury Road|В постапокалиптической пустыне Макс и императрица Фуриоса на боевой фуре бегут от тирана, увозя его пленниц.
+Arrival|Лингвиста приглашают расшифровать язык инопланетян, чьи корабли зависли над Землёй в двенадцати точках.
+La La Land|Джазовый пианист и начинающая актриса влюбляются в Лос-Анджелесе, пытаясь не потерять собственные мечты.
+Eternal Sunshine of the Spotless Mind|Узнав, что бывшая стёрла его из памяти, Джоэл решается на ту же процедуру, но посреди неё передумывает.
+Amelie|Застенчивая официантка с Монмартра решает тайком делать счастливыми окружающих и заодно ищет любовь.
+The Big Lebowski|Ленивого любителя боулинга по прозвищу Чувак путают с миллионером-однофамильцем и втягивают в историю с похищением.
+No Country for Old Men|Охотник находит в пустыне чемодан с деньгами наркоторговцев, и по его следу идёт хладнокровный убийца Антон Чигур.
+Fargo|Продавец машин в Миннесоте нанимает двух бандитов похитить собственную жену, а дело берёт беременная шериф.
+Lock, Stock and Two Smoking Barrels|Четверо приятелей из Лондона проигрывают в карты полмиллиона и должны найти деньги за неделю.
+Snatch|Охота за украденным бриллиантом сталкивает лондонских гангстеров, подпольных боксёров и ирландских цыган.
+The Truman Show|Страховой агент Трумэн постепенно понимает, что вся его жизнь — круглосуточное реалити-шоу.
+Groundhog Day|Циничный телеведущий застревает в маленьком городке, проживая один и тот же День сурка снова и снова.
+Terminator 2: Judgment Day|Киборг из будущего прибывает защитить юного Джона Коннора от нового жидкометаллического убийцы.
+Titanic|Аристократка и бедный художник влюбляются друг в друга на борту «Титаника» во время его первого рейса.
+Avatar|Парализованный морпех через тело аватара попадает к народу на’ви на Пандоре и оказывается между двух миров.
+Jurassic Park|Миллиардер создаёт парк с клонированными динозаврами и приглашает учёных оценить его безопасность.
+Raiders of the Lost Ark|Археолог Индиана Джонс соревнуется с нацистами в поисках легендарного Ковчега Завета.
+Star Wars|Фермер Люк Скайуокер вместе с контрабандистом Ханом Соло и старым джедаем отправляется спасать принцессу Лею.
+The Empire Strikes Back|Империя преследует повстанцев, а Люк учится пути джедая у магистра Йоды.
+Jaws|У берегов курортного острова появляется гигантская белая акула, и шериф с учёным и охотником выходят в море.
+Home Alone|Восьмилетнего Кевина случайно забывают дома на Рождество, и он защищает дом от двух грабителей.
+Harry Potter and the Sorcerer's Stone|Мальчик-сирота в день 11-летия узнаёт, что он волшебник, и отправляется учиться в Хогвартс.
+Harry Potter and the Prisoner of Azkaban|Из тюрьмы Азкабан сбегает опасный преступник Сириус Блэк, и, похоже, он охотится за Гарри.
+Pirates of the Caribbean: The Curse of the Black Pearl|Кузнец Уилл Тёрнер объединяется с эксцентричным капитаном Джеком Воробьём, чтобы спасти похищенную пиратами Элизабет.
+Shrek|Ворчливый огр Шрек отправляется вызволять принцессу из башни, чтобы вернуть себе родное болото.
+Toy Story|Ковбой Вуди ревнует хозяина к новой игрушке — космическому рейнджеру Баззу Лайтеру.
+Howl's Moving Castle|Колдунья превращает юную шляпницу Софи в старуху, и та находит убежище в шагающем замке волшебника Хаула.
+Princess Mononoke|Юный принц Аситака оказывается в центре войны между людьми, вырубающими лес, и его древними духами.
+My Neighbor Totoro|Две сестры переезжают с отцом в деревню и знакомятся с добрыми лесными духами — Тоторо.
+Spider-Man: Into the Spider-Verse|Подросток Майлз Моралес становится Человеком-пауком и встречает паучьих героев из параллельных вселенных.
+Zootopia|Крольчиха-полицейская Джуди Хопс и хитрый лис Ник расследуют исчезновения хищников в городе зверей.
+How to Train Your Dragon|Сын вождя викингов вместо того чтобы убить дракона приручает его и меняет мир своего племени.
+Ratatouille|Крыса Реми мечтает стать поваром в Париже и тайно готовит, управляя неуклюжим поварёнком.
+Finding Nemo|Рыба-клоун Марлин пересекает океан, чтобы найти сына Немо, пойманного дайвером.
+Monsters, Inc.|Монстры, которые пугают детей ради энергии, сами панически боятся детей — пока в их мир не попадает маленькая девочка.
+Gravity|После разрушения шаттла двое астронавтов остаются одни на орбите и пытаются вернуться на Землю.
+The Martian|Астронавта по ошибке оставляют одного на Марсе, и ему приходится выживать с помощью науки, пока Земля ищет способ его спасти.
+Gone Girl|В день пятой годовщины свадьбы жена Ника Данна исчезает, и всё больше улик указывает на него самого.
+The Social Network|Как студент Гарварда Марк Цукерберг создал Facebook и что это стоило его дружбе и репутации.
+Zodiac|Карикатурист, журналист и детектив годами пытаются вычислить серийного убийцу Зодиака, терроризировавшего Сан-Франциско.
+Prisoners|Когда пропадают две маленькие девочки, отец одной из них берёт расследование в свои руки, не доверяя полиции.
+Sicario|Агент ФБР присоединяется к засекреченной операции против мексиканского наркокартеля на границе США.
+There Will Be Blood|Безжалостный нефтепромышленник начала XX века строит империю в Калифорнии и сталкивается с молодым проповедником.
+The Imitation Game|Математик Алан Тьюринг во время Второй мировой пытается взломать немецкую шифровальную машину «Энигма».
+A Beautiful Mind|Гениальный математик Джон Нэш совершает прорыв в науке, но его жизнь становится испытанием, когда реальность начинает ускользать.
+Catch Me If You Can|Молодой аферист Фрэнк Абигнейл выдаёт себя за пилота, врача и юриста, а агент ФБР идёт за ним по пятам.
+The Terminal|Путешественник из маленькой страны застревает в нью-йоркском аэропорту, когда на родине случается переворот.
+The Sixth Sense|Детский психолог пытается помочь мальчику, который утверждает, что видит мёртвых.
+The Others|Мать с двумя детьми, не переносящими солнечного света, живёт в старом особняке, где начинают происходить странные вещи.
+The Exorcist|Мать обращается к двум священникам, когда её 12-летняя дочь начинает пугающе меняться.
+Get Out|Темнокожий фотограф едет знакомиться с родителями белой девушки, и их гостеприимство становится всё более жутким.
+Hereditary|После смерти скрытной бабушки её семья начинает раскрывать тёмные тайны своего рода.
+Midsommar|Пара на грани расставания едет с друзьями на летний праздник в изолированную шведскую общину.
+The Thing|Полярники в Антарктиде сталкиваются с инопланетным организмом, способным принимать облик любого из них.
+The Conjuring|Демонологи Эд и Лоррейн Уоррен помогают семье, которую терроризирует тёмная сила в новом фермерском доме.
+A Quiet Place|Семья выживает в мире, захваченном слепыми существами, которые охотятся на любой звук.
+Rosemary's Baby|Молодая жена переезжает с мужем в старый нью-йоркский дом и, забеременев, начинает подозревать соседей в заговоре.
+The Substance|Стареющая звезда фитнес-шоу пробует подпольный препарат, который создаёт её молодую и идеальную версию.
+The Devil Wears Prada|Выпускница журфака становится ассистенткой властного главреда модного журнала.
+Love Actually|Десяток переплетённых любовных историй в Лондоне за несколько недель до Рождества.
+The Notebook|Пожилой мужчина читает женщине в доме престарелых историю любви двух молодых людей из 1940-х.
+Pride & Prejudice|Остроумная Элизабет Беннет и гордый мистер Дарси раз за разом не понимают друг друга в Англии начала XIX века.
+Pretty Woman|Богатый бизнесмен нанимает девушку по вызову на неделю, и деловое соглашение перерастает в нечто большее.
+Notting Hill|Владелец маленького книжного в Лондоне случайно знакомится с самой знаменитой киноактрисой мира.
+Before Sunrise|Американец и француженка знакомятся в поезде и проводят вместе одну ночь, гуляя по Вене.
+Her|Одинокий писатель влюбляется в операционную систему с искусственным интеллектом по имени Саманта.
+Brokeback Mountain|Два ковбоя знакомятся летом 1963 года на пастбище в Вайоминге, и их связь длится десятилетиями.
+Call Me by Your Name|Летом 1983 года в Италии 17-летний Элио влюбляется в аспиранта, приехавшего работать к его отцу.
+Past Lives|Друзья детства из Сеула встречаются в Нью-Йорке спустя двадцать лет и думают о том, что могло бы быть.
+Anora|Стриптизёрша из Бруклина импульсивно выходит замуж за сына русского олигарха, и его семья совсем не в восторге.
+Everything Everywhere All at Once|Владелица прачечной в разгар налоговой проверки узнаёт, что именно она должна спасти мультивселенную.
+Top Gun: Maverick|Спустя тридцать лет Пит «Мэверик» Митчелл возвращается в Топ Ган, чтобы подготовить молодых пилотов к опасной миссии.
+Poor Things|Молодая женщина, возвращённая к жизни эксцентричным учёным, сбегает в путешествие, чтобы узнать мир.
+Barbie|Барби из идеального Барбиленда вдруг начинает сомневаться в своей идеальности и вместе с Кеном отправляется в реальный мир.
+Killers of the Flower Moon|В 1920-х в Оклахоме разбогатевшие на нефти индейцы осейджи один за другим гибнут при загадочных обстоятельствах.
+The Zone of Interest|Комендант Освенцима и его жена обустраивают идиллическую семейную жизнь в доме прямо за стеной лагеря.
+Anatomy of a Fall|Писательницу обвиняют в смерти мужа, и их слабовидящий сын становится главным свидетелем на суде.
+Conclave|После смерти Папы Римского кардинал руководит конклавом и раскрывает тайны, способные повлиять на выбор нового понтифика.
+The Brutalist|Венгерский архитектор, переживший Холокост, эмигрирует в США и получает заказ, который изменит его жизнь.
+The Banshees of Inisherin|На ирландском острове один старый друг внезапно перестаёт общаться с другим, и обида перерастает в нечто пугающее.
+Three Billboards Outside Ebbing, Missouri|Мать, чью дочь убили, а дело так и не раскрыли, арендует три билборда с упрёком в адрес местного шерифа.
+In Bruges|После неудачного заказа два киллера по приказу босса прячутся в средневековом Брюгге.
+Guardians of the Galaxy|Авантюрист Питер Квилл собирает разношёрстную команду изгоев, чтобы защитить могущественный артефакт.
+Avengers: Infinity War|Мстители и Стражи Галактики объединяются, чтобы помешать Таносу собрать все Камни Бесконечности.
+Iron Man|Миллиардер-оружейник Тони Старк попадает в плен и собирает высокотехнологичный бронекостюм, чтобы сбежать.
+Logan|Постаревший Росомаха в 2029 году скрывается у мексиканской границы, пока не встречает девочку с похожими способностями.
+Deadpool|Бывший спецназовец после жестокого эксперимента получает способность к регенерации и ищет того, кто его изуродовал.
+The Batman|На второй год своей работы Бэтмен расследует серию убийств, которые Загадочник устраивает среди элиты Готэма.
+Mission: Impossible - Fallout|Итан Хант и его команда пытаются вернуть похищенный плутоний после проваленной миссии.
+John Wick|Отставной киллер возвращается к прежнему ремеслу, когда сын русского гангстера убивает его собаку.
+Casino Royale|Джеймс Бонд получает статус 00 и садится за покерный стол в Черногории против банкира террористов.
+Die Hard|Нью-йоркский полицейский Джон Макклейн оказывается в небоскрёбе, захваченном террористами в канун Рождества.
+Heat|Профессиональный грабитель и одержимый детектив ведут игру в кошки-мышки на улицах Лос-Анджелеса.
+Taxi Driver|Ветеран Вьетнама, страдающий бессонницей, работает ночным таксистом в Нью-Йорке и всё сильнее отчуждается от мира.
+Once Upon a Time in America|Полвека жизни друзей из еврейского квартала Нью-Йорка, ставших гангстерами во времена сухого закона.
+Scarface|Кубинский беженец Тони Монтана проходит путь от мелкого бандита до наркобарона Майами.
+Once Upon a Time in Hollywood|Стареющая звезда телевестернов и его верный дублёр пытаются найти своё место в Голливуде 1969 года.
+Reservoir Dogs|После провального ограбления выжившие преступники собираются на складе и пытаются вычислить предателя.
+Kill Bill: Vol. 1|Невеста приходит в себя после четырёх лет комы и начинает мстить бывшим соратникам, устроившим бойню на её свадьбе.
+One Flew Over the Cuckoo's Nest|Заключённый симулирует безумие, чтобы попасть в психиатрическую лечебницу, и бросает вызов деспотичной медсестре.
+A Clockwork Orange|Лидер подростковой банды в антиутопической Англии соглашается на экспериментальную терапию по исправлению.
+2001: A Space Odyssey|Путь человечества от первых орудий до полёта к Юпитеру, где экипаж корабля сталкивается с бортовым компьютером HAL 9000.
+Full Metal Jacket|Новобранцы морской пехоты проходят жестокую учебку, а затем попадают на войну во Вьетнаме.
+1917|Два британских солдата должны пересечь вражескую территорию и доставить приказ, который может спасти 1600 человек.
+Dunkirk|Эвакуация британских и французских солдат с пляжей Дюнкерка в 1940 году — на суше, в море и в воздухе.
+Hacksaw Ridge|Санитар-пацифист, отказавшийся брать в руки оружие, спасает десятки раненых в битве за Окинаву.
+Braveheart|Шотландец Уильям Уоллес поднимает восстание против английского короля в конце XIII века.
+All Quiet on the Western Front|Юный немецкий доброволец рвётся на фронт Первой мировой и сталкивается с ужасами окопной войны.
+Life Is Beautiful|Итальянский официант, попав с маленьким сыном в концлагерь, убеждает мальчика, что всё вокруг — игра.
+Gone with the Wind|Своенравная южанка Скарлетт О’Хара пытается выжить и сохранить родную плантацию во время Гражданской войны в США.
+Bohemian Rhapsody|История группы Queen и Фредди Меркьюри — от первых концертов до легендарного выступления на Live Aid.
+The Great Gatsby|Молодой Ник Каррауэй становится соседом загадочного миллионера Джея Гэтсби, устраивающего роскошные вечеринки.
+Moulin Rouge!|Молодой поэт влюбляется в звезду парижского кабаре «Мулен Руж», за которой ухаживает богатый герцог.
+The Greatest Showman|Финеас Тейлор Барнум собирает труппу необычных артистов и создаёт шоу, из которого вырастет цирк.
+Little Miss Sunshine|Неблагополучная семья едет через всю страну на старом фургоне, чтобы младшая дочь поучаствовала в детском конкурсе красоты.
+Green Book|В 1962 году вышибала из Бронкса становится водителем чернокожего пианиста на гастролях по американскому Югу.
+The Holiday|Две женщины с разбитыми сердцами — из Лос-Анджелеса и английской деревни — на Рождество меняются домами.
+The Hangover|Трое друзей просыпаются в Вегасе после мальчишника, ничего не помня, и обнаруживают, что жених пропал.
+Superbad|Два неразлучных старшеклассника пытаются раздобыть алкоголь для вечеринки перед выпускным.
+We're the Millers|Мелкий наркодилер собирает фальшивую семью, чтобы провезти через мексиканскую границу крупную партию травки.
+Bridget Jones's Diary|Тридцатилетняя лондонка начинает вести дневник и разрывается между обаятельным начальником и чопорным адвокатом.
+Mr. & Mrs. Smith|Скучающие супруги обнаруживают, что оба они — наёмные убийцы и теперь получили заказ друг на друга.
+Ironiya sudby|В новогоднюю ночь после бани с друзьями москвич Женя Лукашин по ошибке улетает в Ленинград и попадает в квартиру по своему же адресу.
+Moskva slezam ne verit|Три подруги приезжают покорять Москву в 1950-х, а двадцать лет спустя подводят итоги своих судеб.
+Ivan Vasilievich menyaet professiyu|Изобретатель машины времени случайно меняет местами Ивана Грозного с управдомом Буншей и вором Милославским.
+Brilliantovaya ruka|Скромный экономист Семён Горбунков возвращается из круиза с гипсом, в котором контрабандисты спрятали бриллианты.
+Sluzhebny roman|Робкий статистик по совету друга начинает ухаживать за строгой начальницей ради повышения.
+Dzhentlmeny udachi|Добрый заведующий детским садом как две капли воды похож на опасного вора и под прикрытием отправляется к его сообщникам.
+Kin-dza-dza|Прораб и студент-скрипач случайно телепортируются на пустынную планету Плюк, где действуют абсурдные законы.
+Sobachye serdtse|Профессор Преображенский пересаживает бродячему псу человеческие органы, и тот превращается в гражданина Шарикова.
+Stalker|Проводник ведёт Писателя и Профессора через таинственную Зону к Комнате, исполняющей самые сокровенные желания.
+Brat|Демобилизованный Данила Багров приезжает в Петербург к старшему брату и оказывается втянут в криминальные разборки.
+Leviathan|Автомеханик из северного приморского городка пытается отстоять свой дом и землю у продажного мэра.
+Loveless|Разводящиеся супруги, занятые новыми отношениями, обнаруживают, что их 12-летний сын пропал.
+City of God|Взросление в фавеле Рио-де-Жанейро глазами мальчика, мечтающего стать фотографом, на фоне войны банд.
+Pan's Labyrinth|В Испании 1944 года девочка, живущая с жестоким отчимом-капитаном, находит в старом лабиринте фавна и мир волшебства.
+The Shape of Water|Немая уборщица секретной лаборатории в 1960-х сближается с загадочным существом-амфибией.
+The Secret in Their Eyes|Отставной следователь пишет роман о нераскрытом убийстве 25-летней давности, которое не даёт ему покоя.
+The Hunt|Воспитателя детского сада ложно обвиняют, и маленький датский городок ополчается против него.
+Another Round|Четверо учителей проверяют теорию, что постоянный небольшой градус алкоголя в крови делает жизнь лучше.
+Marriage Story|Режиссёр и актриса проходят через болезненный развод, деля сына между Нью-Йорком и Лос-Анджелесом.
+Lady Bird|Последний школьный год своевольной девушки из Сакраменто, мечтающей уехать в Нью-Йорк, и её непростые отношения с матерью.
+Little Women|Четыре сестры Марч взрослеют в Новой Англии после Гражданской войны, у каждой своя мечта.
+Moonlight|Три главы жизни Широна, парня из неблагополучного района Майами, который ищет себя.
+Knockin' on Heaven's Door|Двое неизлечимо больных сбегают из больницы на угнанном «Мерседесе» с деньгами бандитов, чтобы впервые увидеть море.
+Run Lola Run|У Лолы есть 20 минут, чтобы найти 100 тысяч марок и спасти бойфренда, — и три попытки это сделать.
+Tenet|Агент получает доступ к технологии инверсии времени, чтобы предотвратить катастрофу страшнее ядерной войны.
+Memento|Мужчина, который не может запоминать новое дольше нескольких минут, ищет убийцу жены с помощью татуировок и полароидов.
+The Fifth Element|Нью-йоркский таксист XXIII века вместе с загадочной девушкой Лилу пытается спасти Землю от абсолютного зла.
+District 9|Инопланетных беженцев держат в гетто Йоханнесбурга, а чиновник, руководящий их выселением, сам начинает меняться.
+Edge of Tomorrow|Неопытный офицер погибает в бою с пришельцами и попадает в петлю времени, раз за разом проживая один и тот же день.
+Children of Men|В 2027 году люди перестали рождаться, а бывший активист должен защитить первую за 18 лет беременную женщину.
+Ex Machina|Программист приезжает на виллу гениального изобретателя, чтобы проверить, обладает ли андроид Ава сознанием.
+50 First Dates|Ветеринар на Гавайях влюбляется в девушку, которая каждое утро забывает предыдущий день.
+The King's Speech|Будущий король Георг VI с помощью эксцентричного логопеда пытается справиться с заиканием.
+The Revenant|Охотник за пушниной, брошенный умирать после нападения медведя, пробирается через дикие земли, чтобы отомстить.
+Birdman|Актёр, прославившийся ролью супергероя, ставит спектакль на Бродвее, чтобы вернуть себе признание.
+Ford v Ferrari|Конструктор Кэрролл Шелби и гонщик Кен Майлз создают для Ford машину, способную обыграть Ferrari в Ле-Мане.
+Rush|Соперничество гонщиков «Формулы-1» Джеймса Ханта и Ники Лауды в сезоне 1976 года.
+The Gentlemen|Американец, построивший в Британии марихуановую империю, решает продать бизнес, и вокруг начинается охота.
+Ocean's Eleven|Только что вышедший из тюрьмы Дэнни Оушен собирает команду, чтобы ограбить три казино Лас-Вегаса одновременно.
+`.trim().split('\n');
+const DESC = Object.fromEntries(DESC_RAW.map(l => { const i = l.indexOf('|'); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
+for (const m of MOVIES) m.desc = DESC[m.orig] || '';
+
+const CAST_RAW = `
+The Shawshank Redemption|Тим Роббинс, Морган Фриман
+The Godfather|Марлон Брандо, Аль Пачино, Джеймс Каан
+The Godfather Part II|Аль Пачино, Роберт Де Ниро, Роберт Дюваль
+The Dark Knight|Кристиан Бейл, Хит Леджер, Аарон Экхарт
+Schindler's List|Лиам Нисон, Бен Кингсли, Рэйф Файнс
+The Lord of the Rings: The Fellowship of the Ring|Элайджа Вуд, Иэн Маккеллен, Вигго Мортенсен
+The Lord of the Rings: The Two Towers|Элайджа Вуд, Вигго Мортенсен, Энди Серкис
+The Lord of the Rings: The Return of the King|Элайджа Вуд, Вигго Мортенсен, Шон Астин
+Pulp Fiction|Джон Траволта, Сэмюэл Л. Джексон, Ума Турман
+Fight Club|Эдвард Нортон, Брэд Питт, Хелена Бонем Картер
+Forrest Gump|Том Хэнкс, Робин Райт, Гэри Синиз
+Inception|Леонардо ДиКаприо, Джозеф Гордон-Левитт, Том Харди
+The Matrix|Киану Ривз, Лоренс Фишберн, Кэрри-Энн Мосс
+Goodfellas|Рэй Лиотта, Роберт Де Ниро, Джо Пеши
+Interstellar|Мэттью Макконахи, Энн Хэтэуэй, Джессика Честейн
+Se7en|Брэд Питт, Морган Фриман, Гвинет Пэлтроу
+The Silence of the Lambs|Джоди Фостер, Энтони Хопкинс
+The Green Mile|Том Хэнкс, Майкл Кларк Дункан
+Saving Private Ryan|Том Хэнкс, Мэтт Дэймон, Том Сайзмор
+Spirited Away|Studio Ghibli
+Parasite|Сон Кан-хо, Чхве У-сик, Пак Со-дам
+Leon: The Professional|Жан Рено, Натали Портман, Гэри Олдман
+The Usual Suspects|Кевин Спейси, Габриэль Бирн, Бенисио Дель Торо
+The Prestige|Хью Джекман, Кристиан Бейл, Майкл Кейн
+The Departed|Леонардо ДиКаприо, Мэтт Дэймон, Джек Николсон
+Gladiator|Рассел Кроу, Хоакин Феникс, Конни Нильсен
+Whiplash|Майлз Теллер, Дж. К. Симмонс
+Intouchables|Франсуа Клюзе, Омар Си
+The Lion King|Disney
+Back to the Future|Майкл Дж. Фокс, Кристофер Ллойд
+American History X|Эдвард Нортон, Эдвард Ферлонг
+The Pianist|Эдриен Броуди
+Psycho|Энтони Перкинс, Джанет Ли
+Rear Window|Джеймс Стюарт, Грейс Келли
+Casablanca|Хамфри Богарт, Ингрид Бергман
+Alien|Сигурни Уивер, Том Скеррит, Джон Хёрт
+Aliens|Сигурни Уивер, Майкл Бин, Билл Пэкстон
+Apocalypse Now|Мартин Шин, Марлон Брандо, Роберт Дюваль
+The Shining|Джек Николсон, Шелли Дювалл
+Django Unchained|Джейми Фокс, Кристоф Вальц, Леонардо ДиКаприо
+WALL-E|Pixar
+The Lives of Others|Ульрих Мюэ, Себастьян Кох, Мартина Гедек
+Oldboy|Чхве Мин-сик, Ю Джи-тэ
+The Good, the Bad and the Ugly|Клинт Иствуд, Ли Ван Клиф, Илай Уоллак
+Once Upon a Time in the West|Генри Фонда, Чарльз Бронсон, Клаудия Кардинале
+Avengers: Endgame|Роберт Дауни мл., Крис Эванс, Скарлетт Йоханссон
+Joker|Хоакин Феникс, Роберт Де Ниро
+Inglourious Basterds|Брэд Питт, Кристоф Вальц, Мелани Лоран
+American Beauty|Кевин Спейси, Аннетт Бенинг
+Coco|Pixar
+Up|Pixar
+Inside Out|Pixar
+Knives Out|Дэниел Крейг, Ана де Армас, Крис Эванс
+Shutter Island|Леонардо ДиКаприо, Марк Руффало, Бен Кингсли
+The Wolf of Wall Street|Леонардо ДиКаприо, Джона Хилл, Марго Робби
+The Grand Budapest Hotel|Рэйф Файнс, Тони Револори, Сирша Ронан
+Blade Runner|Харрисон Форд, Рутгер Хауэр, Шон Янг
+Blade Runner 2049|Райан Гослинг, Харрисон Форд, Ана де Армас
+Dune|Тимоти Шаламе, Ребекка Фергюсон, Оскар Айзек
+Dune: Part Two|Тимоти Шаламе, Зендея, Остин Батлер
+Oppenheimer|Киллиан Мёрфи, Эмили Блант, Роберт Дауни мл.
+Mad Max: Fury Road|Том Харди, Шарлиз Терон
+Arrival|Эми Адамс, Джереми Реннер
+La La Land|Райан Гослинг, Эмма Стоун
+Eternal Sunshine of the Spotless Mind|Джим Керри, Кейт Уинслет
+Amelie|Одри Тоту, Матьё Кассовиц
+The Big Lebowski|Джефф Бриджес, Джон Гудман, Стив Бушеми
+No Country for Old Men|Томми Ли Джонс, Хавьер Бардем, Джош Бролин
+Fargo|Фрэнсис Макдорманд, Уильям Х. Мэйси, Стив Бушеми
+Lock, Stock and Two Smoking Barrels|Джейсон Флеминг, Декстер Флетчер, Джейсон Стэйтем
+Snatch|Джейсон Стэйтем, Брэд Питт, Бенисио Дель Торо
+The Truman Show|Джим Керри, Эд Харрис
+Groundhog Day|Билл Мюррей, Энди Макдауэлл
+Terminator 2: Judgment Day|Арнольд Шварценеггер, Линда Хэмилтон, Эдвард Ферлонг
+Titanic|Леонардо ДиКаприо, Кейт Уинслет
+Avatar|Сэм Уортингтон, Зои Салдана, Сигурни Уивер
+Jurassic Park|Сэм Нилл, Лора Дерн, Джефф Голдблюм
+Raiders of the Lost Ark|Харрисон Форд, Карен Аллен
+Star Wars|Марк Хэмилл, Харрисон Форд, Кэрри Фишер
+The Empire Strikes Back|Марк Хэмилл, Харрисон Форд, Кэрри Фишер
+Jaws|Рой Шайдер, Роберт Шоу, Ричард Дрейфус
+Home Alone|Маколей Калкин, Джо Пеши, Дэниел Стерн
+Harry Potter and the Sorcerer's Stone|Дэниел Рэдклифф, Руперт Гринт, Эмма Уотсон
+Harry Potter and the Prisoner of Azkaban|Дэниел Рэдклифф, Эмма Уотсон, Гэри Олдман
+Pirates of the Caribbean: The Curse of the Black Pearl|Джонни Депп, Орландо Блум, Кира Найтли
+Shrek|DreamWorks
+Toy Story|Pixar
+Howl's Moving Castle|Studio Ghibli
+Princess Mononoke|Studio Ghibli
+My Neighbor Totoro|Studio Ghibli
+Spider-Man: Into the Spider-Verse|Sony Pictures Animation
+Zootopia|Disney
+How to Train Your Dragon|DreamWorks
+Ratatouille|Pixar
+Finding Nemo|Pixar
+Monsters, Inc.|Pixar
+Gravity|Сандра Буллок, Джордж Клуни
+The Martian|Мэтт Дэймон, Джессика Честейн
+Gone Girl|Бен Аффлек, Розамунд Пайк
+The Social Network|Джесси Айзенберг, Эндрю Гарфилд, Джастин Тимберлейк
+Zodiac|Джейк Джилленхол, Марк Руффало, Роберт Дауни мл.
+Prisoners|Хью Джекман, Джейк Джилленхол
+Sicario|Эмили Блант, Бенисио Дель Торо, Джош Бролин
+There Will Be Blood|Дэниел Дэй-Льюис, Пол Дано
+The Imitation Game|Бенедикт Камбербэтч, Кира Найтли
+A Beautiful Mind|Рассел Кроу, Дженнифер Коннелли
+Catch Me If You Can|Леонардо ДиКаприо, Том Хэнкс
+The Terminal|Том Хэнкс, Кэтрин Зета-Джонс
+The Sixth Sense|Брюс Уиллис, Хейли Джоэл Осмент
+The Others|Николь Кидман
+The Exorcist|Эллен Бёрстин, Линда Блэр, Макс фон Сюдов
+Get Out|Дэниел Калуя, Эллисон Уильямс
+Hereditary|Тони Коллетт, Алекс Вулфф, Милли Шапиро
+Midsommar|Флоренс Пью, Джек Рейнор
+The Thing|Курт Рассел
+The Conjuring|Вера Фармига, Патрик Уилсон
+A Quiet Place|Эмили Блант, Джон Красински
+Rosemary's Baby|Миа Фэрроу, Джон Кассаветис
+The Substance|Деми Мур, Маргарет Куэлли, Деннис Куэйд
+The Devil Wears Prada|Мэрил Стрип, Энн Хэтэуэй, Эмили Блант
+Love Actually|Хью Грант, Эмма Томпсон, Колин Фёрт
+The Notebook|Райан Гослинг, Рэйчел Макадамс
+Pride & Prejudice|Кира Найтли, Мэттью Макфэдьен
+Pretty Woman|Джулия Робертс, Ричард Гир
+Notting Hill|Джулия Робертс, Хью Грант
+Before Sunrise|Итан Хоук, Жюли Дельпи
+Her|Хоакин Феникс, Скарлетт Йоханссон, Эми Адамс
+Brokeback Mountain|Хит Леджер, Джейк Джилленхол
+Call Me by Your Name|Тимоти Шаламе, Арми Хаммер
+Past Lives|Грета Ли, Тео Ю, Джон Магаро
+Anora|Майки Мэдисон, Марк Эйдельштейн, Юра Борисов
+Everything Everywhere All at Once|Мишель Йео, Ке Хюи Куан, Джейми Ли Кёртис
+Top Gun: Maverick|Том Круз, Майлз Теллер, Дженнифер Коннелли
+Poor Things|Эмма Стоун, Марк Руффало, Уиллем Дефо
+Barbie|Марго Робби, Райан Гослинг
+Killers of the Flower Moon|Леонардо ДиКаприо, Лили Гладстон, Роберт Де Ниро
+The Zone of Interest|Кристиан Фридель, Сандра Хюллер
+Anatomy of a Fall|Сандра Хюллер, Мило Машадо-Гранер
+Conclave|Рэйф Файнс, Стэнли Туччи, Изабелла Росселлини
+The Brutalist|Эдриен Броуди, Фелисити Джонс, Гай Пирс
+The Banshees of Inisherin|Колин Фаррелл, Брендан Глисон, Керри Кондон
+Three Billboards Outside Ebbing, Missouri|Фрэнсис Макдорманд, Вуди Харрельсон, Сэм Рокуэлл
+In Bruges|Колин Фаррелл, Брендан Глисон, Рэйф Файнс
+Guardians of the Galaxy|Крис Пратт, Зои Салдана, Дэйв Батиста
+Avengers: Infinity War|Роберт Дауни мл., Крис Хемсворт, Джош Бролин
+Iron Man|Роберт Дауни мл., Гвинет Пэлтроу, Джефф Бриджес
+Logan|Хью Джекман, Патрик Стюарт, Дафни Кин
+Deadpool|Райан Рейнольдс, Морена Баккарин
+The Batman|Роберт Паттинсон, Зои Кравиц, Пол Дано
+Mission: Impossible - Fallout|Том Круз, Генри Кавилл, Ребекка Фергюсон
+John Wick|Киану Ривз, Микаэль Нюквист
+Casino Royale|Дэниел Крейг, Ева Грин, Мадс Миккельсен
+Die Hard|Брюс Уиллис, Алан Рикман
+Heat|Аль Пачино, Роберт Де Ниро, Вэл Килмер
+Taxi Driver|Роберт Де Ниро, Джоди Фостер
+Once Upon a Time in America|Роберт Де Ниро, Джеймс Вудс, Элизабет Макговерн
+Scarface|Аль Пачино, Мишель Пфайффер
+Once Upon a Time in Hollywood|Леонардо ДиКаприо, Брэд Питт, Марго Робби
+Reservoir Dogs|Харви Кейтель, Тим Рот, Майкл Мэдсен
+Kill Bill: Vol. 1|Ума Турман, Люси Лью, Дэвид Кэррадайн
+One Flew Over the Cuckoo's Nest|Джек Николсон, Луиза Флетчер
+A Clockwork Orange|Малкольм Макдауэлл
+2001: A Space Odyssey|Кир Дулли, Гэри Локвуд
+Full Metal Jacket|Мэттью Модайн, Р. Ли Эрми, Винсент Д’Онофрио
+1917|Джордж Маккей, Дин-Чарльз Чэпмен
+Dunkirk|Финн Уайтхед, Том Харди, Киллиан Мёрфи
+Hacksaw Ridge|Эндрю Гарфилд, Винс Вон
+Braveheart|Мэл Гибсон, Софи Марсо
+All Quiet on the Western Front|Феликс Каммерер, Альбрехт Шух, Даниэль Брюль
+Life Is Beautiful|Роберто Бениньи, Николетта Браски
+Gone with the Wind|Вивьен Ли, Кларк Гейбл
+Bohemian Rhapsody|Рами Малек, Люси Бойнтон
+The Great Gatsby|Леонардо ДиКаприо, Тоби Магуайр, Кэри Маллиган
+Moulin Rouge!|Николь Кидман, Юэн Макгрегор
+The Greatest Showman|Хью Джекман, Зак Эфрон, Зендея
+Little Miss Sunshine|Эбигейл Бреслин, Стив Карелл, Тони Коллетт
+Green Book|Вигго Мортенсен, Махершала Али
+The Holiday|Кэмерон Диаз, Кейт Уинслет, Джуд Лоу
+The Hangover|Брэдли Купер, Зак Галифианакис, Эд Хелмс
+Superbad|Джона Хилл, Майкл Сера
+We're the Millers|Джейсон Судейкис, Дженнифер Энистон
+Bridget Jones's Diary|Рене Зеллвегер, Хью Грант, Колин Фёрт
+Mr. & Mrs. Smith|Брэд Питт, Анджелина Джоли
+Ironiya sudby|Андрей Мягков, Барбара Брыльска, Юрий Яковлев
+Moskva slezam ne verit|Вера Алентова, Алексей Баталов
+Ivan Vasilievich menyaet professiyu|Юрий Яковлев, Леонид Куравлёв, Александр Демьяненко
+Brilliantovaya ruka|Юрий Никулин, Андрей Миронов, Анатолий Папанов
+Sluzhebny roman|Андрей Мягков, Алиса Фрейндлих
+Dzhentlmeny udachi|Евгений Леонов, Георгий Вицин, Савелий Крамаров
+Kin-dza-dza|Станислав Любшин, Леван Габриадзе, Евгений Леонов
+Sobachye serdtse|Евгений Евстигнеев, Владимир Толоконников, Борис Плотников
+Stalker|Александр Кайдановский, Анатолий Солоницын, Николай Гринько
+Brat|Сергей Бодров, Виктор Сухоруков
+Leviathan|Алексей Серебряков, Елена Лядова, Владимир Вдовиченков
+Loveless|Марьяна Спивак, Алексей Розин
+City of God|Александр Родригес, Леандро Фирмино
+Pan's Labyrinth|Ивана Бакеро, Серхи Лопес, Марибель Верду
+The Shape of Water|Салли Хокинс, Майкл Шеннон, Даг Джонс
+The Secret in Their Eyes|Рикардо Дарин, Соледад Вильямиль
+The Hunt|Мадс Миккельсен
+Another Round|Мадс Миккельсен
+Marriage Story|Адам Драйвер, Скарлетт Йоханссон
+Lady Bird|Сирша Ронан, Лори Меткалф
+Little Women|Сирша Ронан, Эмма Уотсон, Флоренс Пью
+Moonlight|Тревант Роудс, Махершала Али
+Knockin' on Heaven's Door|Тиль Швайгер, Ян Йозеф Лиферс
+Run Lola Run|Франка Потенте, Мориц Бляйбтрой
+Tenet|Джон Дэвид Вашингтон, Роберт Паттинсон, Элизабет Дебики
+Memento|Гай Пирс, Кэрри-Энн Мосс
+The Fifth Element|Брюс Уиллис, Милла Йовович, Гэри Олдман
+District 9|Шарлто Копли
+Edge of Tomorrow|Том Круз, Эмили Блант
+Children of Men|Клайв Оуэн, Джулианна Мур, Майкл Кейн
+Ex Machina|Алисия Викандер, Донал Глисон, Оскар Айзек
+50 First Dates|Адам Сэндлер, Дрю Бэрримор
+The King's Speech|Колин Фёрт, Джеффри Раш, Хелена Бонем Картер
+The Revenant|Леонардо ДиКаприо, Том Харди
+Birdman|Майкл Китон, Эдвард Нортон, Эмма Стоун
+Ford v Ferrari|Мэтт Дэймон, Кристиан Бейл
+Rush|Крис Хемсворт, Даниэль Брюль
+The Gentlemen|Мэттью Макконахи, Чарли Ханнэм, Хью Грант
+Ocean's Eleven|Джордж Клуни, Брэд Питт, Мэтт Дэймон
+`.trim().split('\n');
+const CAST = Object.fromEntries(CAST_RAW.map(l => { const i = l.indexOf('|'); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
+for (const m of MOVIES) m.cast = CAST[m.orig] || '';
+
+/* ---------- generated covers: original genre art, drawn per film ---------- */
+function hashStr(s){ let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function mulberry(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hexRgb(h){ const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function mix(a, b, t){ const A = hexRgb(a), B = hexRgb(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
+function rgba(h, a){ const [r, g, b] = hexRgb(h); return `rgba(${r},${g},${b},${a})`; }
+
+function drawCover(cv, m){
+  const W = Math.max(2, Math.round(cv.offsetWidth * Math.min(2, window.devicePixelRatio || 1)));
+  const H = Math.max(2, Math.round(cv.offsetHeight * Math.min(2, window.devicePixelRatio || 1)));
+  cv.width = W; cv.height = H;
+  const x = cv.getContext('2d'); if (!x) return;
+  const R = mulberry(hashStr(m.id));
+  const u = Math.min(W, H) / 100;
+  const g = m.genres[0], g2 = m.genres[1];
+  const [c1, c2] = PALETTE[g] || PALETTE['Драма'];
+  const lite = mix(c2, '#ffffff', .4), deep = mix(c1, '#000000', .45);
+  const circle = (cx, cy, r, fill) => { x.beginPath(); x.arc(cx, cy, Math.max(0, r), 0, Math.PI * 2); x.fillStyle = fill; x.fill(); };
+  const glow = (cx, cy, r, col, a) => { const gr = x.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, rgba(col, a)); gr.addColorStop(1, rgba(col, 0)); x.fillStyle = gr; x.fillRect(0, 0, W, H); };
+  const stars = (n, a) => { for (let i = 0; i < n; i++) circle(R() * W, R() * H, u * (.15 + R() * .45), `rgba(255,255,255,${a * (.3 + R() * .7)})`); };
+  const mountains = (layers, base, rough) => {
+    for (let l = 0; l < layers; l++) {
+      const y0 = H * (base + l * .1); x.beginPath(); x.moveTo(0, H);
+      let y = y0 - R() * H * .08;
+      for (let px = 0; px <= W + 10; px += W / 14) { y = Math.min(H, Math.max(H * .2, y + (R() - .5) * H * rough)); x.lineTo(px, y); }
+      x.lineTo(W, H); x.closePath(); x.fillStyle = mix(c1, '#000000', .1 + l * .22); x.fill();
+    }
+  };
+
+  // base gradient + tint of the second genre
+  let gr = x.createLinearGradient(W * R(), 0, W * R(), H);
+  gr.addColorStop(0, c2); gr.addColorStop(1, c1);
+  x.fillStyle = gr; x.fillRect(0, 0, W, H);
+  if (g2 && PALETTE[g2]) glow(W * (R() > .5 ? .9 : .1), H * .15, W * .9, PALETTE[g2][1], .45);
+
+  switch (g) {
+    case 'Фантастика': {
+      stars(160, .9);
+      const px = W * (.35 + R() * .35), py = H * (.3 + R() * .25), pr = u * (16 + R() * 14);
+      const pg = x.createRadialGradient(px - pr * .4, py - pr * .4, pr * .1, px, py, pr);
+      pg.addColorStop(0, lite); pg.addColorStop(1, deep); circle(px, py, pr, pg);
+      x.save(); x.translate(px, py); x.rotate(-.35 + R() * .2); x.beginPath(); x.ellipse(0, 0, pr * 1.8, pr * .42, 0, 0, Math.PI * 2);
+      x.strokeStyle = rgba(lite, .65); x.lineWidth = u * 1.1; x.stroke(); x.restore();
+      break;
+    }
+    case 'Фэнтези': {
+      stars(70, .6);
+      const mx = W * (.25 + R() * .5), my = H * (.22 + R() * .12);
+      glow(mx, my, u * 40, lite, .5); circle(mx, my, u * 11, mix(lite, '#ffffff', .5));
+      mountains(3, .5, .14);
+      break;
+    }
+    case 'Приключения': {
+      glow(W * (.2 + R() * .6), H * .35, u * 60, '#ffe2a8', .5);
+      circle(W * (.2 + R() * .6), H * (.3 + R() * .1), u * 9, rgba('#fff3d6', .9));
+      mountains(4, .42, .18);
+      break;
+    }
+    case 'Вестерн': {
+      const hy = H * .64, sx = W * (.35 + R() * .3), sr = u * 30;
+      const sg = x.createLinearGradient(0, hy - sr, 0, hy); sg.addColorStop(0, '#f6cf72'); sg.addColorStop(1, '#d9573a');
+      x.save(); x.beginPath(); x.rect(0, 0, W, hy); x.clip(); circle(sx, hy, sr, sg);
+      x.fillStyle = c1; for (let i = 0; i < 6; i++) { const h = u * (.6 + i * .5); x.fillRect(0, hy - sr * .45 + i * u * 2.6, W, h); }
+      x.restore();
+      x.fillStyle = deep; x.fillRect(0, hy, W, H - hy);
+      for (let i = 0; i < 3; i++) { const cx = W * R(), ch = u * (8 + R() * 10); x.fillStyle = mix(c1, '#000000', .6); x.fillRect(cx, hy - ch, u * 1.6, ch); x.fillRect(cx - u * 2.5, hy - ch * .65, u * 2.5, u * 1.2); x.fillRect(cx - u * 2.5, hy - ch * .65 - u * 3, u * 1.2, u * 3.5); }
+      break;
+    }
+    case 'Ужасы': {
+      x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(0, 0, W, H);
+      glow(W * (.3 + R() * .4), H * .25, u * 35, '#ffffff', .12);
+      for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(255,255,255,${.03 + R() * .06})`; x.fillRect(R() * W, 0, Math.max(1, u * .15), H); }
+      for (let i = 0; i < 7; i++) {
+        const dx = W * (.05 + R() * .9), len = H * (.08 + R() * .35), w = u * (1 + R() * 2.2);
+        x.fillStyle = mix(c2, '#ff2020', .35); x.fillRect(dx - w / 2, 0, w, len); circle(dx, len, w * .9, mix(c2, '#ff2020', .35));
+      }
+      break;
+    }
+    case 'Триллер': {
+      const cx = W * (.2 + R() * .6), cy = H * (.25 + R() * .3);
+      x.lineWidth = u * .45; x.strokeStyle = 'rgba(255,255,255,.13)';
+      for (let r = u * 3; r < Math.hypot(W, H); r += u * 3.2) { x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.stroke(); }
+      x.save(); x.translate(cx, cy); x.rotate(-.6 + R() * .4); x.fillStyle = rgba(mix(c2, '#ff4040', .5), .85); x.fillRect(-W, -u * .9, W * 2, u * 1.8); x.restore();
+      break;
+    }
+    case 'Детектив': {
+      const tx = W * (.3 + R() * .4);
+      const lg = x.createLinearGradient(0, 0, 0, H); lg.addColorStop(0, 'rgba(255,248,220,.38)'); lg.addColorStop(1, 'rgba(255,248,220,0)');
+      x.beginPath(); x.moveTo(tx - u * 3, 0); x.lineTo(tx + u * 3, 0); x.lineTo(tx + W * .45, H); x.lineTo(tx - W * .45, H); x.closePath(); x.fillStyle = lg; x.fill();
+      const mx = W * (.25 + R() * .5), my = H * (.45 + R() * .15), mr = u * 13;
+      x.lineWidth = u * 1.8; x.strokeStyle = rgba(lite, .9); x.beginPath(); x.arc(mx, my, mr, 0, Math.PI * 2); x.stroke();
+      x.lineWidth = u * 3; x.lineCap = 'round'; x.beginPath(); x.moveTo(mx + mr * .72, my + mr * .72); x.lineTo(mx + mr * 1.6, my + mr * 1.6); x.stroke();
+      break;
+    }
+    case 'Криминал': {
+      x.save(); x.translate(W / 2, H / 2); x.rotate(-.32 + R() * .12);
+      const ox = -W * (.1 + R() * .3);
+      for (let i = -12; i < 12; i++) { x.fillStyle = 'rgba(255,236,200,.13)'; x.fillRect(ox, i * u * 7, W * 1.2, u * 3.6); }
+      x.restore();
+      glow(W * R(), H * R(), u * 45, '#000000', .5);
+      break;
+    }
+    case 'Мелодрама': {
+      const cy = H * (.38 + R() * .1), r = u * (20 + R() * 6), off = r * .55;
+      x.globalCompositeOperation = 'screen';
+      circle(W / 2 - off, cy, r, rgba(lite, .75)); circle(W / 2 + off, cy, r, rgba(mix(c2, '#ffb3c6', .6), .75));
+      x.globalCompositeOperation = 'source-over';
+      for (let i = 0; i < 8; i++) glow(W * R(), H * R(), u * (6 + R() * 10), '#ffffff', .12);
+      break;
+    }
+    case 'Комедия': {
+      const cols = ['#ffd166', '#ef476f', '#06d6a0', '#4cc9f0', '#ffffff', '#f78c6b'];
+      for (let i = 0; i < 70; i++) {
+        x.save(); x.translate(R() * W, R() * H * .85); x.rotate(R() * Math.PI); x.fillStyle = cols[Math.floor(R() * cols.length)];
+        if (R() > .4) x.fillRect(-u * 1.6, -u * .7, u * 3.2, u * 1.4); else { x.beginPath(); x.arc(0, 0, u * 1.1, 0, Math.PI * 2); x.fill(); }
+        x.restore();
+      }
+      break;
+    }
+    case 'Боевик': {
+      const bx = W * (.2 + R() * .6), by = H * (.3 + R() * .25), n = 36;
+      for (let i = 0; i < n; i += 2) {
+        const a1 = i / n * Math.PI * 2, a2 = (i + 1) / n * Math.PI * 2, L = Math.hypot(W, H);
+        x.beginPath(); x.moveTo(bx, by); x.lineTo(bx + Math.cos(a1) * L, by + Math.sin(a1) * L); x.lineTo(bx + Math.cos(a2) * L, by + Math.sin(a2) * L); x.closePath();
+        x.fillStyle = 'rgba(255,220,170,.11)'; x.fill();
+      }
+      glow(bx, by, u * 30, '#ffd9a0', .55);
+      x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = u * .4;
+      for (let i = 0; i < 14; i++) { const sy = H * R(); x.beginPath(); x.moveTo(-10, sy); x.lineTo(W * (.2 + R() * .5), sy - H * .25); x.stroke(); }
+      break;
+    }
+    case 'Анимация': {
+      const cols = ['#ffd6a5', '#caffbf', '#9bf6ff', '#bdb2ff', '#ffc6ff', '#fdffb6'];
+      for (let i = 0; i < 9; i++) circle(W * R(), H * R() * .9, u * (6 + R() * 18), rgba(cols[Math.floor(R() * cols.length)], .5));
+      for (let i = 0; i < 12; i++) { const sx = W * R(), sy = H * R() * .8, s = u * (1 + R() * 1.5); x.fillStyle = 'rgba(255,255,255,.85)'; x.beginPath(); x.moveTo(sx, sy - s * 2); x.lineTo(sx + s * .5, sy - s * .5); x.lineTo(sx + s * 2, sy); x.lineTo(sx + s * .5, sy + s * .5); x.lineTo(sx, sy + s * 2); x.lineTo(sx - s * .5, sy + s * .5); x.lineTo(sx - s * 2, sy); x.lineTo(sx - s * .5, sy - s * .5); x.closePath(); x.fill(); }
+      break;
+    }
+    case 'Семейный': {
+      const cols = ['#ff6b6b', '#ffd93d', '#6bcB77', '#4d96ff', '#ff9ff3'];
+      for (let i = 0; i < 6; i++) {
+        const bx = W * (.1 + R() * .8), by = H * (.12 + R() * .4), r = u * (5 + R() * 4), col = cols[i % cols.length].toLowerCase();
+        x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = u * .3; x.beginPath(); x.moveTo(bx, by + r * 1.25);
+        x.quadraticCurveTo(bx + (R() - .5) * u * 10, by + r * 3, bx + (R() - .5) * u * 6, H); x.stroke();
+        x.beginPath(); x.ellipse(bx, by, r, r * 1.25, 0, 0, Math.PI * 2); x.fillStyle = col; x.fill();
+        circle(bx - r * .35, by - r * .45, r * .25, 'rgba(255,255,255,.55)');
+      }
+      break;
+    }
+    case 'Военный': {
+      const hy = H * (.62 + R() * .08);
+      for (let i = 0; i < 12; i++) glow(W * R(), hy - H * R() * .4, u * (12 + R() * 20), '#d8d2c0', .16);
+      x.fillStyle = deep; x.fillRect(0, hy, W, H - hy);
+      x.fillStyle = mix(c1, '#000000', .6);
+      for (let px = W * R() * .1; px < W; px += u * (6 + R() * 4)) { const ph = u * (3 + R() * 3); x.fillRect(px, hy - ph, u * .8, ph); }
+      x.strokeStyle = mix(c1, '#000000', .6); x.lineWidth = u * .3; x.beginPath(); x.moveTo(0, hy - u * 2.2); x.lineTo(W, hy - u * 2.4); x.stroke();
+      break;
+    }
+    case 'Биография': {
+      const cx = W * (.35 + R() * .3), cy = H * (.35 + R() * .1), step = u * 3.4, maxD = u * 45;
+      for (let yy = step / 2; yy < H; yy += step) for (let xx = step / 2; xx < W; xx += step) {
+        const d = Math.hypot(xx - cx, yy - cy), r = Math.max(0, (1 - d / maxD)) * step * .48;
+        if (r > .3) circle(xx, yy, r, 'rgba(255,240,220,.55)');
+      }
+      break;
+    }
+    case 'Мюзикл': {
+      for (let i = 0; i < 3; i++) { const sx = W * (.15 + i * .35); const lg = x.createLinearGradient(0, 0, 0, H); lg.addColorStop(0, 'rgba(255,240,255,.28)'); lg.addColorStop(1, 'rgba(255,240,255,0)'); x.beginPath(); x.moveTo(sx - u * 2, 0); x.lineTo(sx + u * 2, 0); x.lineTo(sx + W * .2, H); x.lineTo(sx - W * .2, H); x.closePath(); x.fillStyle = lg; x.fill(); }
+      for (let k = 0; k < 7; k++) {
+        const amp = u * (3 + R() * 8), f = .015 + R() * .03, ph = R() * 6, yb = H * (.45 + k * .05);
+        x.beginPath(); for (let px = 0; px <= W; px += 4) x.lineTo(px, yb + Math.sin(px * f / (u / 4) + ph) * amp);
+        x.strokeStyle = rgba(mix(lite, '#ffffff', k / 10), .5); x.lineWidth = u * .5; x.stroke();
+      }
+      break;
+    }
+    default: { // Драма
+      for (let i = 0; i < 6; i++) glow(W * R(), H * R() * .85, u * (14 + R() * 26), lite, .28 + R() * .2);
+      x.strokeStyle = rgba(lite, .5); x.lineWidth = u * .35;
+      const lx = W * (.15 + R() * .7); x.beginPath(); x.moveTo(lx, 0); x.lineTo(lx, H); x.stroke();
+    }
+  }
+
+  // film grain + vignette
+  for (let i = 0; i < 900; i++) { x.fillStyle = `rgba(255,255,255,${R() * .06})`; x.fillRect(R() * W, R() * H, u * .35, u * .35); }
+  const vg = x.createRadialGradient(W / 2, H * .45, Math.min(W, H) * .3, W / 2, H * .45, Math.hypot(W, H) * .6);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); x.fillStyle = vg; x.fillRect(0, 0, W, H);
+}
+
+/* ---------- state ---------- */
+const LS_R = 'chto-posmotrim.ratings.v1', LS_W = 'chto-posmotrim.who';
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+let ratings = lsGet(LS_R, {});           // id -> {nadia, anton}
+let who = lsGet(LS_W, 'nadia');
+let view = 'rate';
+let listFilter = 'like';
+const history = [];
+const dirty = new Set();
+let db = null, cloudReady = false;
+
+const VALS = ['like','want','dislike','unseen'];
+const label = (v, w = who) => ({
+  like:'Понравилось', dislike:'Не понравилось', want:'Хочу посмотреть',
+  unseen: w === 'nadia' ? 'Не смотрела' : 'Не смотрел'
+})[v];
+const STAMP = { like:'Понравилось', dislike:'Мимо', want:'Хочу', unseen:'Не видел' };
+const COLOR = { like:'var(--like)', dislike:'var(--nope)', want:'var(--want)', unseen:'var(--skip)' };
+
+const $ = id => document.getElementById(id);
+const queue = () => MOVIES.filter(m => !(ratings[m.id] && ratings[m.id][who]));
+
+/* ---------- storage ---------- */
+function setStatus(s, text){ const el = $('status'); el.dataset.s = s; el.textContent = text; }
+const chains = {};
+function persist(id){
+  lsSet(LS_R, ratings);
+  if (!db) return;
+  chains[id] = (chains[id] || Promise.resolve()).then(async () => {
+    const b = ratings[id] || {};
+    const body = {};
+    if (b.nadia) body.nadia = b.nadia;
+    if (b.anton) body.anton = b.anton;
+    const ref = db.collection('ratings').doc(id);
+    if (!body.nadia && !body.anton) await ref.delete();
+    else await ref.set({ ...body, title: BY_ID[id] ? BY_ID[id].ru : id, t: Date.now() });
+    dirty.delete(id);
+  }).catch(e => {
+    if (e && e.code === 'permission-denied') setStatus('error', 'База отклонила запись — отметка сохранена только на этом устройстве');
+    else setStatus('error', 'Не сохранилось в облако, попробую при следующей отметке');
+  });
+}
+
+const FB_CONFIG = {
+  apiKey: "AIzaSyBKEVieTTqbTholqHC-IkaLozWAWwDmNLE",
+  authDomain: "chto-posmotrim.firebaseapp.com",
+  projectId: "chto-posmotrim",
+  storageBucket: "chto-posmotrim.firebasestorage.app",
+  messagingSenderId: "325838284787",
+  appId: "1:325838284787:web:8cc417af88c844fa5b9486"
+};
+async function connect(){
+  try { if (window.firebase) { firebase.initializeApp(FB_CONFIG); db = firebase.firestore(); } } catch { db = null; }
+  if (!db) { setStatus('local', 'Нет связи с базой — отметки хранятся только на этом устройстве'); return; }
+  setStatus('local', 'Загружаю отметки…');
+  const timer = setTimeout(() => { if (!cloudReady) setStatus('error', 'База пока не отвечает, отметки сохраняются локально'); }, 10000);
+  db.collection('ratings').onSnapshot({ includeMetadataChanges: true }, snap => {
+    const next = {};
+    for (const d of snap.docs) { const x = d.data() || {}; next[d.id] = { nadia: x.nadia, anton: x.anton }; }
+    if (!cloudReady && !snap.metadata.fromCache) {
+      cloudReady = true; clearTimeout(timer);
+      for (const id of Object.keys(ratings)) if (!next[id] && BY_ID[id] && (ratings[id].nadia || ratings[id].anton)) dirty.add(id);
+    }
+    for (const id of dirty) next[id] = ratings[id];
+    ratings = next;
+    lsSet(LS_R, ratings);
+    if (cloudReady) { setStatus('cloud', 'Общая база: Надя и Антон видят отметки друг друга'); for (const id of [...dirty]) persist(id); }
+    render();
+  }, () => { clearTimeout(timer); setStatus('error', 'База недоступна, отметки сохраняются локально'); });
+}
+
+/* ---------- actions ---------- */
+function setMark(id, w, v){
+  const cur = { ...(ratings[id] || {}) };
+  if (v) cur[w] = v; else delete cur[w];
+  ratings[id] = cur;
+  dirty.add(id);
+  persist(id);
+}
+let busy = false;
+function rate(v){
+  const top = queue()[0];
+  if (!top || busy) return;
+  busy = true;
+  history.push({ id: top.id, w: who, prev: ratings[top.id] && ratings[top.id][who] });
+  const card = document.querySelector('.card.top');
+  const fly = { like:'translate(140%,10%) rotate(22deg)', dislike:'translate(-140%,10%) rotate(-22deg)',
+                want:'translate(0,-130%) rotate(-4deg)', unseen:'translate(0,130%) rotate(4deg)' }[v];
+  if (card) {
+    card.querySelector('.stamp.' + v).style.opacity = 1;
+    card.style.transition = 'transform .28s ease-in';
+    card.style.transform = fly;
+  }
+  setTimeout(() => { setMark(top.id, who, v); busy = false; render(); }, card ? 260 : 0);
+}
+function undo(){
+  const h = history.pop(); if (!h) return;
+  if (h.w !== who) setWho(h.w);
+  setMark(h.id, h.w, h.prev);
+  render(true);
+}
+function setWho(w){ who = w; lsSet(LS_W, w); render(true); }
+
+/* ---------- rendering ---------- */
+function decadeLabel(y){ return y < 1960 ? 'классика до 60-х' : (Math.floor(y / 10) * 10) + '-е'; }
+function cardHTML(m, cls){
+  const [c1] = PALETTE[m.genres[0]] || PALETTE['Драма'];
+  const ink = mix(c1, '#0b0709', .55);
+  const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const enc = encodeURIComponent;
+  const showOrig = !m.ru_origin && m.orig.toLowerCase() !== m.ru.toLowerCase();
+  return `<div class="card ${cls}" data-id="${m.id}" style="--ink:${ink}">
+    <div class="art">
+      <canvas data-id="${m.id}" aria-hidden="true"></canvas>
+      <div class="art-meta">
+        <div><div class="year">${m.year}</div><div class="decade">${decadeLabel(m.year)}</div></div>
+        <div class="art-right">
+          <a class="poster-link" href="https://www.kinopoisk.ru/index.php?kp_query=${enc(m.ru + ' ' + m.year)}" target="_blank" rel="noopener">Постер ↗</a>
+          ${m.ru_origin ? '<span class="origin">СССР / Россия</span>' : ''}
+        </div>
+      </div>
+    </div>
+    <div class="info">
+      <div class="p-title">${esc(m.ru)}</div>
+      ${showOrig ? `<div class="p-orig">${esc(m.orig)}</div>` : ''}
+      ${m.desc ? `<div class="p-desc">${esc(m.desc)}</div>` : ''}
+      ${m.cast ? `<div class="p-cast"><b>${m.genres.includes('Анимация') ? 'студия' : 'в ролях'}</b>${esc(m.cast)}</div>` : ''}
+      <div class="p-dir"><b>реж.</b>${esc(m.dir)}</div>
+      <div class="p-foot">
+        <div class="chips">${m.genres.map(g => `<span>${g}</span>`).join('')}</div>
+        <div class="links">
+          <a href="https://www.kinopoisk.ru/index.php?kp_query=${enc(m.ru + ' ' + m.year)}" target="_blank" rel="noopener">Кинопоиск ↗</a>
+          <a href="https://www.imdb.com/find/?q=${enc(m.orig + ' ' + m.year)}" target="_blank" rel="noopener">IMDb ↗</a>
+        </div>
+      </div>
+    </div>
+    <div class="stamp like">${STAMP.like}</div><div class="stamp dislike">${STAMP.dislike}</div>
+    <div class="stamp want">${STAMP.want}</div><div class="stamp unseen">${who === 'nadia' ? 'Не видела' : 'Не видел'}</div>
+  </div>`;
+}
+
+let shownKey = '';
+function render(force){
+  document.querySelectorAll('[data-who]').forEach(b => b.setAttribute('aria-pressed', b.dataset.who === who));
+  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === view));
+  $('rateView').hidden = view !== 'rate';
+  $('rateView').style.display = view === 'rate' ? 'contents' : 'none';
+  $('listView').hidden = view !== 'list';
+
+  const q = queue();
+  const done = MOVIES.length - q.length;
+  $('cnt').textContent = `${done} / ${MOVIES.length}`;
+  $('bar').style.width = (done / MOVIES.length * 100) + '%';
+  $('unseenLbl').textContent = label('unseen');
+  $('hint').textContent = `Свайп: → понравилось, ← нет, ↑ хочу, ↓ ${who === 'nadia' ? 'не смотрела' : 'не смотрел'}`;
+  $('undo').disabled = history.length === 0;
+  document.querySelectorAll('.act').forEach(b => b.disabled = q.length === 0);
+
+  if (view === 'rate') {
+    const key = who + ':' + (q[0] ? q[0].id : '-') + ':' + (q[1] ? q[1].id : '-');
+    if (force || key !== shownKey) {
+      shownKey = key;
+      const stage = $('stage');
+      if (!q.length) {
+        stage.innerHTML = `<div class="done"><h2>Всё отмечено</h2>
+          <p>${who === 'nadia' ? 'Надя' : 'Антон'}, база собрана. Напиши в чате «собери подборку» — я учту, что понравилось, и не буду предлагать уже просмотренное.</p></div>`;
+      } else {
+        stage.innerHTML = (q[1] ? cardHTML(q[1], 'next') : '') + cardHTML(q[0], 'top');
+        bindDrag(stage.querySelector('.card.top'));
+        stage.querySelectorAll('canvas[data-id]').forEach(cv => { try { drawCover(cv, BY_ID[cv.dataset.id]); } catch {} });
+      }
+    }
+  } else renderList();
+}
+
+function renderList(){
+  const counts = Object.fromEntries(VALS.map(v => [v, 0]));
+  for (const m of MOVIES) { const v = ratings[m.id] && ratings[m.id][who]; if (v) counts[v]++; }
+  $('filters').innerHTML = VALS.map(v =>
+    `<button data-f="${v}" aria-pressed="${v === listFilter}">${label(v)}<span class="n">${counts[v]}</span></button>`).join('');
+  const items = MOVIES.filter(m => ratings[m.id] && ratings[m.id][who] === listFilter)
+    .sort((a, b) => a.ru.localeCompare(b.ru, 'ru'));
+  $('list').innerHTML = items.length ? items.map(m => `<div class="row">
+      <span class="sw" style="background:${COLOR[listFilter]}"></span>
+      <div class="t"><b>${m.ru}</b><small>${m.year} · ${m.genres.join(', ')}</small></div>
+      <button data-reset="${m.id}">Вернуть в очередь</button></div>`).join('')
+    : `<div class="empty">Здесь пока пусто</div>`;
+}
+
+/* ---------- swipe ---------- */
+function bindDrag(card){
+  if (!card) return;
+  let sx = 0, sy = 0, dx = 0, dy = 0, active = false;
+  const stamps = Object.fromEntries(VALS.map(v => [v, card.querySelector('.stamp.' + v)]));
+  const dir = () => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'like' : 'dislike') : (dy < 0 ? 'want' : 'unseen');
+  card.addEventListener('pointerdown', e => {
+    if (busy || e.target.closest('a')) return;
+    active = true; sx = e.clientX; sy = e.clientY; dx = dy = 0;
+    card.setPointerCapture(e.pointerId); card.style.transition = 'none';
+  });
+  card.addEventListener('pointermove', e => {
+    if (!active) return;
+    dx = e.clientX - sx; dy = e.clientY - sy;
+    card.style.transform = `translate(${dx}px,${dy}px) rotate(${dx / 18}deg)`;
+    const d = dir(), p = Math.min(1, Math.max(Math.abs(dx), Math.abs(dy)) / 110);
+    for (const v of VALS) stamps[v].style.opacity = v === d ? p : 0;
+  });
+  const end = () => {
+    if (!active) return; active = false;
+    const far = Math.max(Math.abs(dx), Math.abs(dy)) > 100;
+    if (far) { rate(dir()); return; }
+    card.style.transition = 'transform .2s ease-out'; card.style.transform = '';
+    for (const v of VALS) stamps[v].style.opacity = 0;
+  };
+  card.addEventListener('pointerup', end);
+  card.addEventListener('pointercancel', end);
+}
+
+/* ---------- wiring ---------- */
+document.querySelectorAll('.act').forEach(b => b.addEventListener('click', () => rate(b.dataset.v)));
+document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setWho(b.dataset.who)));
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.view; render(true); }));
+$('undo').addEventListener('click', undo);
+$('filters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { listFilter = b.dataset.f; renderList(); } });
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('[data-reset]'); if (!b) return;
+  const id = b.dataset.reset;
+  history.push({ id, w: who, prev: ratings[id] && ratings[id][who] });
+  setMark(id, who, undefined); render(true);
+});
+document.addEventListener('keydown', e => {
+  if (view !== 'rate' || e.metaKey || e.ctrlKey) return;
+  const map = { ArrowRight:'like', ArrowLeft:'dislike', ArrowUp:'want', ArrowDown:'unseen' };
+  if (map[e.key]) { e.preventDefault(); rate(map[e.key]); }
+  else if (e.key === 'Backspace' || e.key === 'z') { e.preventDefault(); undo(); }
+});
+
+let resizeT;
+window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (!busy) render(true); }, 180); });
+
+render(true);
+connect();
+</script>
+
+</body>
+</html>
