@@ -1386,9 +1386,10 @@ function persist(coll, id){
   chains[k] = (chains[k] || Promise.resolve()).then(async () => {
     const b = store[id] || {};
     const body = {};
-    if (b.nadia) body.nadia = b.nadia;
-    if (b.anton) body.anton = b.anton;
-    const ref = db.collection(coll).doc(id);
+    const conv = v => coll === 'picks' ? P2R[v] : v;
+    if (b.nadia) body.nadia = conv(b.nadia);
+    if (b.anton) body.anton = conv(b.anton);
+    const ref = db.collection('ratings').doc(coll === 'picks' ? PICK_PREFIX + id : id);
     if (!body.nadia && !body.anton) await ref.delete();
     else await ref.set({ ...body, title: (BY_ID[id] || CAND_BY_ID[id] || { ru: id }).ru, t: Date.now() });
     dirty[coll].delete(id);
@@ -1406,20 +1407,32 @@ const FB_CONFIG = {
   messagingSenderId: "325838284787",
   appId: "1:325838284787:web:8cc417af88c844fa5b9486"
 };
-function subscribe(coll, timer){
-  db.collection(coll).onSnapshot({ includeMetadataChanges: true }, snap => {
-    const cur = coll === 'ratings' ? ratings : picks;
-    const next = {};
-    for (const d of snap.docs) { const x = d.data() || {}; next[d.id] = { nadia: x.nadia, anton: x.anton }; }
-    if (!cloudReady[coll] && !snap.metadata.fromCache) {
-      cloudReady[coll] = true;
-      for (const id of Object.keys(cur)) if (!next[id] && (cur[id].nadia || cur[id].anton)) dirty[coll].add(id);
+// picks live in the same Firestore collection as ratings (doc id "pick--<id>"), mapped onto the allowed values
+const P2R = { yes: 'like', maybe: 'want', no: 'dislike', seen: 'unseen' };
+const R2P = { like: 'yes', want: 'maybe', dislike: 'no', unseen: 'seen' };
+const PICK_PREFIX = 'pick--';
+function subscribe(timer){
+  db.collection('ratings').onSnapshot({ includeMetadataChanges: true }, snap => {
+    const nextR = {}, nextP = {};
+    for (const d of snap.docs) {
+      const x = d.data() || {};
+      if (d.id.startsWith(PICK_PREFIX)) nextP[d.id.slice(PICK_PREFIX.length)] = { nadia: R2P[x.nadia], anton: R2P[x.anton] };
+      else nextR[d.id] = { nadia: x.nadia, anton: x.anton };
     }
-    for (const id of dirty[coll]) next[id] = cur[id];
-    if (coll === 'ratings') ratings = next; else picks = next;
-    lsSet(coll === 'ratings' ? LS_R : LS_P, next);
-    if (cloudReady.ratings && cloudReady.picks) { clearTimeout(timer); setStatus('cloud', 'Общая база: Надя и Антон видят выбор друг друга'); }
-    if (cloudReady[coll]) for (const id of [...dirty[coll]]) persist(coll, id);
+    if (!cloudReady.ratings && !snap.metadata.fromCache) {
+      cloudReady.ratings = cloudReady.picks = true; clearTimeout(timer);
+      for (const id of Object.keys(ratings)) if (!nextR[id] && (ratings[id].nadia || ratings[id].anton)) dirty.ratings.add(id);
+      for (const id of Object.keys(picks)) if (!nextP[id] && (picks[id].nadia || picks[id].anton)) dirty.picks.add(id);
+    }
+    for (const id of dirty.ratings) nextR[id] = ratings[id];
+    for (const id of dirty.picks) nextP[id] = picks[id];
+    ratings = nextR; picks = nextP;
+    lsSet(LS_R, ratings); lsSet(LS_P, picks);
+    if (cloudReady.ratings) {
+      setStatus('cloud', 'Общая база: Надя и Антон видят выбор друг друга');
+      for (const id of [...dirty.ratings]) persist('ratings', id);
+      for (const id of [...dirty.picks]) persist('picks', id);
+    }
     render();
   }, () => { clearTimeout(timer); setStatus('error', 'База недоступна, отметки сохраняются локально'); });
 }
@@ -1428,8 +1441,7 @@ async function connect(){
   if (!db) { setStatus('local', 'Нет связи с базой — отметки хранятся только на этом устройстве'); return; }
   setStatus('local', 'Загружаю отметки…');
   const timer = setTimeout(() => { if (!(cloudReady.ratings && cloudReady.picks)) setStatus('error', 'База пока не отвечает, отметки сохраняются локально'); }, 10000);
-  subscribe('ratings', timer);
-  subscribe('picks', timer);
+  subscribe(timer);
 }
 
 /* ---------- actions ---------- */
