@@ -127,6 +127,38 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px;fl
 .row button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 10px;font-size:12px;color:var(--muted)}
 .empty{color:var(--muted);padding:24px 0;text-align:center}
 
+
+.tabs{display:flex;width:100%}
+.tabs button{flex:1;padding:7px 4px;font-size:13px;white-space:nowrap}
+.tabs .n{font-family:var(--f-mono);font-size:11px;margin-left:2px;opacity:.75}
+.pickbar{display:flex;flex-direction:column;gap:8px;min-height:0}
+.ftoggle{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:13px}
+.ftoggle span{color:var(--muted);flex:none}
+.ftoggle b{font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftoggle i{font-style:normal;color:var(--muted);font-size:10px}
+.fpanel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:12px;max-height:56vh;overflow-y:auto}
+.fgroup{display:flex;flex-direction:column;gap:6px}
+.ftitle{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.fchips{display:flex;flex-wrap:wrap;gap:6px}
+.fchips button,.factions button{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--fg)}
+.fchips button[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:#1a1016}
+.factions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.factions .primary{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+.p-meta{font-family:var(--f-mono);font-size:11.5px;color:rgba(255,255,255,.7);margin-top:-3px}
+.p-why{font-size:12.5px;color:rgba(255,255,255,.85);background:rgba(220,174,99,.14);border-left:2px solid var(--brass);padding:4px 8px;border-radius:0 6px 6px 0}
+.p-why b{font-weight:600;color:#fff}
+.pill{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;background:var(--like);color:#0d1f15}
+.card.pick .p-dir{display:none}
+.card.pick .p-desc{-webkit-line-clamp:3}
+.done.match .spark{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.12em;color:var(--like);font-size:14px}
+.done.match h2{font-size:30px}
+.mhead{margin:0;color:var(--fg);font-size:14px;line-height:1.45}
+.mhead b{font-family:var(--f-mono)}
+.mwait{margin:0;color:var(--muted);font-size:13px}
+.mwait:empty{display:none}
+.mrow .why{display:block;color:var(--brass)}
+.rlinks{display:flex;flex-direction:column;gap:4px;font-size:12px;align-items:flex-end}
+.rlinks a{color:var(--brass);text-decoration:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}</style>
@@ -143,14 +175,19 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px;fl
   </header>
 
   <div class="meta">
-    <div class="meta-row">
-      <span>Отмечено <span class="count" id="cnt">0 / 0</span></span>
-      <div class="seg" role="group" aria-label="Раздел">
-        <button id="view-rate" data-view="rate" aria-pressed="true">Оценка</button>
-        <button id="view-list" data-view="list" aria-pressed="false">Отметки</button>
-      </div>
+    <div class="seg tabs" role="group" aria-label="Раздел">
+      <button id="view-pick" data-view="pick" aria-pressed="true">Подбор</button>
+      <button id="view-match" data-view="match" aria-pressed="false">Совпадения <span class="n" id="matchN">0</span></button>
+      <button id="view-rate" data-view="rate" aria-pressed="false">Оценка</button>
+      <button id="view-list" data-view="list" aria-pressed="false">Отметки</button>
     </div>
+    <div class="meta-row"><span id="metaText"></span></div>
     <div class="bar"><i id="bar"></i></div>
+  </div>
+
+  <div id="pickBar" class="pickbar">
+    <button id="ftoggle" class="ftoggle" aria-expanded="false" aria-controls="fpanel"></button>
+    <div id="fpanel" class="fpanel" hidden></div>
   </div>
 
   <section id="rateView" style="display:contents">
@@ -170,6 +207,12 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px;fl
   <section id="listView" class="list-wrap" hidden>
     <div class="filters" id="filters"></div>
     <div class="list" id="list"></div>
+  </section>
+
+  <section id="matchView" class="list-wrap" hidden>
+    <p class="mhead" id="matchHead"></p>
+    <p class="mwait" id="matchWait"></p>
+    <div class="list" id="matchList"></div>
   </section>
 
   <div class="foot"><span class="status" id="status" data-s="local">Подключаюсь…</span></div>
@@ -1068,45 +1111,287 @@ function drawCover(cv, m){
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); x.fillStyle = vg; x.fillRect(0, 0, W, H);
 }
 
+/* ---------- pick catalogue: new films chosen from Nadia & Anton's marks ---------- */
+// ru|orig(English)|year|genres|director|cast|minutes|mood|anchor (; separated, titles from the marked list)|description|su?
+const PICKS_RAW = `
+Стеклянная луковица|Glass Onion: A Knives Out Mystery|2022|Детектив,Комедия|Райан Джонсон|Дэниел Крейг, Эдвард Нортон, Жанель Монэ|139|light|Достать ножи|Миллиардер зовёт старых друзей на свой греческий остров поиграть в убийство, и среди гостей оказывается сыщик Бенуа Блан.
+Девушка с татуировкой дракона|The Girl with the Dragon Tattoo|2011|Детектив,Триллер|Дэвид Финчер|Дэниел Крейг, Руни Мара|158|tense|Зодиак;Семь|Журналист и хакерша-одиночка расследуют исчезновение девушки из богатой шведской семьи сорок лет назад.
+Стрингер|Nightcrawler|2014|Триллер,Криминал|Дэн Гилрой|Джейк Джилленхол, Рене Руссо|117|tense|Семь|Безработный одиночка становится ночным стрингером, снимающим аварии и преступления для ТВ, и ради кадра готов на всё.
+Невидимый гость|The Invisible Guest|2016|Триллер,Детектив|Ориол Паоло|Марио Касас, Ана Вагенер|106|tense|Остров проклятых|Бизнесмена обвиняют в убийстве любовницы, и в ночь перед допросом он с адвокатом восстанавливает, что случилось на самом деле.
+Иллюзия обмана|Now You See Me|2013|Криминал,Триллер|Луи Летерье|Джесси Айзенберг, Марк Руффало, Вуди Харрельсон|115|light|Престиж|Четыре фокусника прямо во время шоу грабят банк, а ФБР пытается понять, как им это удалось.
+Не пойман — не вор|Inside Man|2006|Криминал,Триллер|Спайк Ли|Дензел Вашингтон, Клайв Оуэн, Джоди Фостер|129|tense|Подозрительные лица|Идеально спланированное ограбление банка на Манхэттене превращается в дуэль грабителя и переговорщика.
+Афера|The Sting|1973|Криминал,Комедия|Джордж Рой Хилл|Пол Ньюман, Роберт Редфорд|129|light|Поймай меня, если сможешь|Два мошенника в Чикаго 1930-х затевают многоходовую аферу против жестокого гангстера.
+Малыш на драйве|Baby Driver|2017|Боевик,Криминал|Эдгар Райт|Энсел Элгорт, Лили Джеймс, Джейми Фокс|113|light|Джон Уик|Молодой водитель банды грабителей живёт под музыку в наушниках и мечтает соскочить после последнего дела.
+Город воров|The Town|2010|Криминал,Триллер|Бен Аффлек|Бен Аффлек, Ребекка Холл, Джереми Реннер|125|tense|Подозрительные лица|Лидер банды бостонских грабителей влюбляется в бывшую заложницу, а ФБР уже идёт по следу.
+Таинственная река|Mystic River|2003|Детектив,Драма|Клинт Иствуд|Шон Пенн, Тим Роббинс, Кевин Бейкон|138|think|Остров проклятых|Убийство дочери одного из трёх друзей детства снова сводит их вместе и поднимает старую травму.
+Соучастник|Collateral|2004|Триллер,Криминал|Майкл Манн|Том Круз, Джейми Фокс|120|tense|Джон Уик|Таксист в Лос-Анджелесе понимает, что его пассажир — наёмный убийца, который за ночь объезжает свои цели.
+Ветреная река|Wind River|2017|Детектив,Триллер|Тейлор Шеридан|Джереми Реннер, Элизабет Олсен|107|tense|Молчание ягнят|Охотник и молодая агентка ФБР расследуют гибель девушки в заснеженной индейской резервации.
+Талантливый мистер Рипли|The Talented Mr. Ripley|1999|Триллер,Драма|Энтони Мингелла|Мэтт Дэймон, Джуд Лоу, Гвинет Пэлтроу|139|tense|Поймай меня, если сможешь|Молодого обманщика отправляют в Италию вернуть домой сына богача, и он всё глубже входит в чужую жизнь.
+Операция «Арго»|Argo|2012|Биография,Триллер|Бен Аффлек|Бен Аффлек, Брайан Крэнстон, Алан Аркин|120|tense|Игра в имитацию|Агент ЦРУ вывозит американских дипломатов из Ирана, выдав их за съёмочную группу несуществующего фильма.
+В центре внимания|Spotlight|2015|Биография,Драма|Том Маккарти|Марк Руффало, Майкл Китон, Рэйчел Макадамс|129|think|Социальная сеть|Журналисты Boston Globe раскапывают, как церковь годами скрывала преступления священников.
+Игра на понижение|The Big Short|2015|Биография,Комедия|Адам Маккей|Кристиан Бейл, Стив Карелл, Райан Гослинг|130|think|Волк с Уолл-стрит|Несколько чудаков с Уолл-стрит раньше всех замечают пузырь на ипотечном рынке и ставят против системы.
+Человек, который изменил всё|Moneyball|2011|Биография,Драма|Беннетт Миллер|Брэд Питт, Джона Хилл|133|think|Ford против Ferrari|Менеджер бейсбольной команды без бюджета собирает состав по статистике, бросая вызов традициям.
+Основатель|The Founder|2016|Биография,Драма|Джон Ли Хэнкок|Майкл Китон, Ник Офферман|115|think|Социальная сеть|Коммивояжёр Рэй Крок знакомится с братьями Макдональд и превращает их закусочную в мировую империю.
+Большая игра|Molly's Game|2017|Биография,Криминал|Аарон Соркин|Джессика Честейн, Идрис Эльба|140|tense|Волк с Уолл-стрит|Бывшая лыжница-олимпийка организует подпольный покер для звёзд и миллионеров, пока ею не заинтересовывается ФБР.
+Особое мнение|Minority Report|2002|Фантастика,Детектив|Стивен Спилберг|Том Круз, Колин Фаррелл|145|tense|Начало|В будущем полиция арестовывает преступников до преступления, пока система не указывает на самого главу отдела.
+Петля времени|Looper|2012|Фантастика,Боевик|Райан Джонсон|Джозеф Гордон-Левитт, Брюс Уиллис, Эмили Блант|118|tense|Начало|Наёмный убийца, устраняющий людей из будущего, получает новую цель — самого себя, только на тридцать лет старше.
+Исходный код|Source Code|2011|Фантастика,Триллер|Дункан Джонс|Джейк Джилленхол, Мишель Монахэн|93|tense|Начало|Военный раз за разом проживает последние восемь минут жизни пассажира поезда, чтобы найти террориста.
+Гаттака|Gattaca|1997|Фантастика,Драма|Эндрю Никкол|Итан Хоук, Ума Турман, Джуд Лоу|106|think|Марсианин|В мире, где всё решают гены, «неидеальный» парень выдаёт себя за другого, чтобы полететь в космос.
+Контакт|Contact|1997|Фантастика,Драма|Роберт Земекис|Джоди Фостер, Мэттью Макконахи|150|think|Интерстеллар;Прибытие|Астроном ловит сигнал из космоса с инструкцией, как построить загадочную машину.
+Аватар: Путь воды|Avatar: The Way of Water|2022|Фантастика,Приключения|Джеймс Кэмерон|Сэм Уортингтон, Зои Салдана, Сигурни Уивер|192|epic|Аватар|Джейк Салли с семьёй бежит от людей к морским кланам Пандоры.
+Первому игроку приготовиться|Ready Player One|2018|Фантастика,Приключения|Стивен Спилберг|Тай Шеридан, Оливия Кук|140|epic|Назад в будущее|Подросток ищет спрятанное сокровище в виртуальной вселенной, набитой отсылками к поп-культуре.
+Хоббит: Нежданное путешествие|The Hobbit: An Unexpected Journey|2012|Фэнтези,Приключения|Питер Джексон|Мартин Фриман, Иэн Маккеллен, Ричард Армитидж|169|epic|Властелин колец: Братство Кольца|Бильбо Бэггинс отправляется с гномами и Гэндальфом отвоёвывать их королевство у дракона.
+Гарри Поттер и Дары Смерти: Часть 2|Harry Potter and the Deathly Hallows: Part 2|2011|Фэнтези,Приключения|Дэвид Йейтс|Дэниел Рэдклифф, Эмма Уотсон, Руперт Гринт|130|epic|Гарри Поттер и узник Азкабана|Финальная битва за Хогвартс и последнее противостояние Гарри и Волан-де-Морта.
+Звёздная пыль|Stardust|2007|Фэнтези,Приключения|Мэттью Вон|Чарли Кокс, Клэр Дэйнс, Мишель Пфайффер|127|light|Ходячий замок|Юноша обещает возлюбленной упавшую звезду, переходит стену в волшебное королевство и узнаёт, что звезда — девушка.
+Принцесса-невеста|The Princess Bride|1987|Фэнтези,Комедия|Роб Райнер|Кэри Элвес, Робин Райт|98|cozy|Шрэк|Дедушка читает внуку сказку о конюхе, пиратах, принцессе и самом смешном поединке на шпагах.
+Крупная рыба|Big Fish|2003|Фэнтези,Драма|Тим Бёртон|Юэн Макгрегор, Альберт Финни, Билли Крудап|125|cozy|Форрест Гамп|Сын пытается отделить правду от выдумки в невероятных историях, которые всю жизнь рассказывал его отец.
+Жизнь Пи|Life of Pi|2012|Приключения,Драма|Энг Ли|Сурадж Шарма, Ирфан Кхан|127|think|Марсианин|После кораблекрушения индийский подросток оказывается в шлюпке посреди океана с бенгальским тигром.
+Загадочная история Бенджамина Баттона|The Curious Case of Benjamin Button|2008|Драма,Мелодрама|Дэвид Финчер|Брэд Питт, Кейт Бланшетт|166|cozy|Форрест Гамп|Мужчина рождается стариком и с годами молодеет, проживая любовь всей жизни в обратную сторону.
+Эдвард руки-ножницы|Edward Scissorhands|1990|Фэнтези,Мелодрама|Тим Бёртон|Джонни Депп, Вайнона Райдер|105|cozy|Амели|Искусственный юноша с ножницами вместо рук попадает в пастельный пригород и влюбляется.
+Человек-паук: Паутина вселенных|Spider-Man: Across the Spider-Verse|2023|Анимация,Боевик|Хоаким дус Сантус, Кемп Пауэрс, Джастин К. Томпсон|Sony Pictures Animation|140|epic|Человек-паук: Через вселенные|Майлз Моралес отправляется в мультивселенную за Гвен и сталкивается с целым обществом Людей-пауков.
+Душа|Soul|2020|Анимация,Комедия|Пит Доктер|Pixar|100|cozy|Головоломка|Учитель музыки накануне главного концерта в жизни попадает в мир душ и учит циничную душу 22 жить.
+История игрушек: Большой побег|Toy Story 3|2010|Анимация,Комедия|Ли Анкрич|Pixar|103|cozy|История игрушек|Энди уезжает в колледж, и игрушки по ошибке оказываются в детском саду с очень странными порядками.
+Суперсемейка|The Incredibles|2004|Анимация,Боевик|Брэд Бёрд|Pixar|115|light|Корпорация монстров|Бывшие супергерои, вынужденные жить как обычная семья в пригороде, снова надевают костюмы.
+Клаус|Klaus|2019|Анимация,Семейный|Серхио Пабло|Netflix Animation|96|cozy|Тайна Коко|Ленивого почтальона ссылают на мрачный северный остров, где он заводит дружбу с отшельником-игрушечником.
+Кот в сапогах 2: Последнее желание|Puss in Boots: The Last Wish|2022|Анимация,Приключения|Джоэл Кроуфорд|DreamWorks|102|light|Шрэк|Кот в сапогах растратил восемь жизней из девяти и отправляется за звездой, исполняющей желания.
+Твоё имя|Your Name|2016|Анимация,Мелодрама|Макото Синкай|CoMix Wave Films|106|cozy|Унесённые призраками|Девушка из деревни и парень из Токио начинают просыпаться в телах друг друга.
+Ведьмина служба доставки|Kiki's Delivery Service|1989|Анимация,Семейный|Хаяо Миядзаки|Studio Ghibli|103|cozy|Ходячий замок|Юная ведьма Кики поселяется в приморском городе и открывает службу доставки на метле.
+Головоломка 2|Inside Out 2|2024|Анимация,Комедия|Келси Манн|Pixar|96|cozy|Головоломка|Райли становится подростком, и в штаб врываются новые эмоции во главе с Тревожностью.
+Мальчик и птица|The Boy and the Heron|2023|Анимация,Фэнтези|Хаяо Миядзаки|Studio Ghibli|124|think|Унесённые призраками|Мальчик, потерявший мать в войну, следует за говорящей цаплей в таинственный мир.
+Бойфренд из будущего|About Time|2013|Мелодрама,Фантастика|Ричард Кёртис|Донал Глисон, Рэйчел Макадамс, Билл Найи|123|cozy|Дневник памяти|В 21 год парень узнаёт, что мужчины в его семье умеют путешествовать во времени, и пробует устроить личную жизнь.
+Эта дурацкая любовь|Crazy, Stupid, Love.|2011|Комедия,Мелодрама|Гленн Фикарра, Джон Рекуа|Стив Карелл, Райан Гослинг, Эмма Стоун|118|light|Отпуск по обмену|Брошенному женой мужчине помогает вернуть уверенность обаятельный ловелас, у которого свои проблемы.
+Мой парень — псих|Silver Linings Playbook|2012|Мелодрама,Комедия|Дэвид О. Расселл|Брэдли Купер, Дженнифер Лоуренс|122|cozy|Ла-Ла Ленд|Двое людей с непростыми историями заключают сделку: он помогает ей с танцевальным конкурсом, она ему — с бывшей женой.
+500 дней лета|(500) Days of Summer|2009|Мелодрама,Комедия|Марк Уэбб|Джозеф Гордон-Левитт, Зоуи Дешанель|95|cozy|Ла-Ла Ленд|История 500 дней отношений, рассказанная не по порядку, от первой встречи до расставания.
+Стажёр|The Intern|2015|Комедия,Драма|Нэнси Мейерс|Роберт Де Ниро, Энн Хэтэуэй|121|cozy|Дьявол носит Prada|70-летний вдовец становится стажёром в модном интернет-стартапе и находит общий язык с его основательницей.
+Предложение|The Proposal|2009|Комедия,Мелодрама|Энн Флетчер|Сандра Буллок, Райан Рейнольдс|108|light|Дьявол носит Prada|Властная начальница, которой грозит депортация, заставляет ассистента изобразить её жениха.
+Славные парни (2016)|The Nice Guys|2016|Комедия,Детектив|Шейн Блэк|Райан Гослинг, Рассел Кроу|116|light|Джентльмены|Лос-Анджелес 1977 года: неуклюжий частный детектив и громила-вышибала ищут пропавшую девушку.
+Мачо и ботан|21 Jump Street|2012|Комедия,Боевик|Фил Лорд, Кристофер Миллер|Джона Хилл, Ченнинг Татум|109|light|SuperПерцы|Два неудачливых копа под видом школьников внедряются в старшую школу, чтобы найти дилеров.
+Когда Гарри встретил Салли|When Harry Met Sally...|1989|Мелодрама,Комедия|Роб Райнер|Билли Кристал, Мег Райан|96|cozy|Красотка|Двенадцать лет встреч мужчины и женщины, которые спорят, бывает ли дружба между ними.
+Умница Уилл Хантинг|Good Will Hunting|1997|Драма|Гас Ван Сент|Мэтт Дэймон, Робин Уильямс, Бен Аффлек|126|think|Игры разума|Уборщик в MIT оказывается математическим гением, но разобраться в себе ему помогает только психолог.
+Общество мёртвых поэтов|Dead Poets Society|1989|Драма|Питер Уир|Робин Уильямс, Итан Хоук|128|cozy|Зелёная миля|Новый учитель литературы в строгой школе для мальчиков учит их думать своей головой.
+В погоне за счастьем|The Pursuit of Happyness|2006|Биография,Драма|Габриэле Муччино|Уилл Смит, Джейден Смит|117|cozy|1+1|Отец-одиночка без денег и жилья борется за стажировку брокера, чтобы вытащить себя и сына.
+Миллионер из трущоб|Slumdog Millionaire|2008|Драма,Мелодрама|Дэнни Бойл|Дев Патель, Фрида Пинто|120|cozy|Форрест Гамп|Парень из трущоб Мумбаи на шаг от выигрыша в телевикторине, и каждый ответ — кусок его жизни.
+Звезда родилась|A Star Is Born|2018|Мюзикл,Мелодрама|Брэдли Купер|Брэдли Купер, Леди Гага|136|cozy|Ла-Ла Ленд|Звезда кантри-рока открывает талант никому не известной певицы, пока его собственная звезда гаснет.
+Скрытые фигуры|Hidden Figures|2016|Биография,Драма|Теодор Мелфи|Тараджи П. Хенсон, Октавия Спенсер, Жанель Монэ|127|cozy|Игра в имитацию|Три темнокожие математички в NASA 1960-х помогают отправить американца на орбиту.
+Вселенная Стивена Хокинга|The Theory of Everything|2014|Биография,Мелодрама|Джеймс Марш|Эдди Редмэйн, Фелисити Джонс|123|cozy|Игры разума|История Стивена Хокинга и его первой жены Джейн — от знакомства в Кембридже до мировой славы.
+Рокетмен|Rocketman|2019|Биография,Мюзикл|Декстер Флетчер|Тэрон Эджертон, Джейми Белл|121|epic|Богемская рапсодия|Жизнь Элтона Джона — от застенчивого вундеркинда до суперзвезды — в форме яркого мюзикла.
+Элвис|Elvis|2022|Биография,Мюзикл|Баз Лурман|Остин Батлер, Том Хэнкс|159|epic|Богемская рапсодия;Великий Гэтсби|Взлёт Элвиса Пресли глазами его хитрого менеджера полковника Тома Паркера.
+Прислуга|The Help|2011|Драма|Тейт Тейлор|Эмма Стоун, Виола Дэвис, Октавия Спенсер|146|cozy|Зелёная книга|Молодая журналистка в Миссисипи 1960-х записывает истории темнокожих домработниц.
+Лев|Lion|2016|Биография,Драма|Гарт Дэвис|Дев Патель, Руни Мара, Николь Кидман|118|cozy|1+1|Мальчик потерялся в Индии и был усыновлён австралийцами, а через 25 лет ищет свой дом с помощью Google Earth.
+Шерлок Холмс|Sherlock Holmes|2009|Детектив,Боевик|Гай Ричи|Роберт Дауни мл., Джуд Лоу, Рэйчел Макадамс|128|light|Джентльмены|Холмс и Ватсон расследуют дело лорда, вернувшегося, похоже, из мёртвых.
+Агенты А.Н.К.Л.|The Man from U.N.C.L.E.|2015|Боевик,Комедия|Гай Ричи|Генри Кавилл, Арми Хаммер, Алисия Викандер|116|light|Джентльмены|Агент ЦРУ и агент КГБ в 1960-х вынуждены работать вместе против загадочной преступной организации.
+Kingsman: Секретная служба|Kingsman: The Secret Service|2014|Боевик,Комедия|Мэттью Вон|Колин Фёрт, Тэрон Эджертон, Сэмюэл Л. Джексон|129|light|Казино «Рояль»|Парень с улицы попадает в элитную секретную службу британских джентльменов.
+Гангстер|American Gangster|2007|Криминал,Биография|Ридли Скотт|Дензел Вашингтон, Рассел Кроу|157|tense|Крёстный отец|История Фрэнка Лукаса, наркобарона Гарлема 1970-х, и честного копа, который за ним охотился.
+Идентификация Борна|The Bourne Identity|2002|Боевик,Триллер|Даг Лайман|Мэтт Дэймон, Франка Потенте|119|tense|Казино «Рояль»|Мужчину без памяти вылавливают из моря, и он понимает, что умеет убивать, а за ним охотится ЦРУ.
+007: Координаты «Скайфолл»|Skyfall|2012|Боевик,Триллер|Сэм Мендес|Дэниел Крейг, Хавьер Бардем, Джуди Денч|143|epic|Казино «Рояль»|Бонд защищает М от бывшего агента, который мстит MI6.
+Человек-паук: Нет пути домой|Spider-Man: No Way Home|2021|Боевик,Фантастика|Джон Уоттс|Том Холланд, Зендея, Бенедикт Камбербэтч|148|epic|Мстители: Финал|После раскрытия личности Питер просит Доктора Стрэнджа о заклинании, и в его мир врываются злодеи из других вселенных.
+Мстители|The Avengers|2012|Боевик,Фантастика|Джосс Уидон|Роберт Дауни мл., Крис Эванс, Скарлетт Йоханссон|143|epic|Железный человек|Ник Фьюри собирает команду героев, чтобы остановить вторжение Локи.
+Первый мститель: Другая война|Captain America: The Winter Soldier|2014|Боевик,Фантастика|Энтони и Джо Руссо|Крис Эванс, Скарлетт Йоханссон, Себастиан Стэн|136|tense|Мстители: Война бесконечности|Капитан Америка узнаёт о заговоре внутри Щ.И.Т.а и сталкивается с таинственным Зимним солдатом.
+Тор: Рагнарёк|Thor: Ragnarok|2017|Боевик,Комедия|Тайка Вайтити|Крис Хемсворт, Том Хиддлстон, Кейт Бланшетт|130|light|Стражи Галактики|Тор становится гладиатором на планете-свалке и должен успеть спасти Асгард от богини смерти.
+Стражи Галактики. Часть 3|Guardians of the Galaxy Vol. 3|2023|Фантастика,Комедия|Джеймс Ганн|Крис Пратт, Зои Салдана, Брэдли Купер|150|epic|Стражи Галактики|Стражи спасают Ракету и узнают историю его происхождения.
+Мы|Us|2019|Ужасы,Триллер|Джордан Пил|Лупита Нионго, Уинстон Дьюк|116|tense|Прочь|Семья на отдыхе сталкивается с жуткими двойниками самих себя.
+Оно|It|2017|Ужасы|Андрес Мускетти|Билл Скарсгард, Джейден Либерер, Финн Вулфхард|135|tense|Тихое место|Компания подростков из городка Дерри противостоит древнему злу в облике клоуна Пеннивайза.
+Сплит|Split|2016|Триллер,Ужасы|М. Найт Шьямалан|Джеймс Макэвой, Аня Тейлор-Джой|117|tense|Молчание ягнят|Мужчина с 23 личностями похищает трёх девушек, и в нём пробуждается двадцать четвёртая.
+Скажи мне|Talk to Me|2023|Ужасы|Дэнни и Майкл Филиппу|Софи Уайлд, Александра Дженсен|95|tense|Субстанция|Подростки устраивают вечеринки с забальзамированной рукой, позволяющей впустить в себя духов.
+Человек-невидимка|The Invisible Man|2020|Ужасы,Триллер|Ли Уоннелл|Элизабет Мосс, Оливер Джексон-Коэн|124|tense|Тихое место|Женщина сбегает от жестокого бойфренда-учёного, а после его «самоубийства» понимает, что он всё ещё рядом.
+Грешники|Sinners|2025|Ужасы,Драма|Райан Куглер|Майкл Б. Джордан, Хейли Стайнфелд|137|tense|Джанго освобождённый|Братья-близнецы открывают музыкальный бар на американском Юге 1930-х, и в первую же ночь на огонёк приходит зло.
+Злая|Wicked|2024|Мюзикл,Фэнтези|Джон М. Чу|Синтия Эриво, Ариана Гранде|160|epic|Величайший шоумен|История дружбы будущей Злой Ведьмы Запада и Доброй Ведьмы Глинды задолго до появления Дороти.
+Мамма MIA!|Mamma Mia!|2008|Мюзикл,Комедия|Филлида Ллойд|Мэрил Стрип, Аманда Сейфрид, Пирс Броснан|108|light|Величайший шоумен|Перед свадьбой девушка тайно приглашает на греческий остров трёх мужчин — возможных отцов.
+Чикаго|Chicago|2002|Мюзикл,Криминал|Роб Маршалл|Рене Зеллвегер, Кэтрин Зета-Джонс, Ричард Гир|113|light|Ла-Ла Ленд|Две убийцы в Чикаго 1920-х превращают свои судебные процессы в шоу ради славы.
+Претенденты|Challengers|2024|Мелодрама,Драма|Лука Гуаданьино|Зендея, Майк Фэйст, Джош О’Коннор|131|tense|Одержимость|Бывшая звезда тенниса, теперь тренер мужа, сталкивает его на корте с его лучшим другом и своим бывшим.
+F1|F1|2025|Драма,Боевик|Джозеф Косински|Брэд Питт, Дэмсон Идрис|155|epic|Гонка;Ford против Ferrari|Ветеран гонок возвращается в «Формулу-1», чтобы спасти отстающую команду и стать наставником молодого пилота.
+Оставленные|The Holdovers|2023|Комедия,Драма|Александр Пэйн|Пол Джаматти, Да’Вин Джой Рэндольф, Доминик Сесса|133|cozy|1+1|Ворчливый учитель остаётся на рождественские каникулы в пустой школе с трудным учеником и поварихой.
+Брат 2|Brat 2|2000|Криминал,Боевик|Алексей Балабанов|Сергей Бодров, Виктор Сухоруков|127|light|Брат|Данила Багров едет в Америку, чтобы заступиться за брата бывшего сослуживца.|su
+Операция «Ы» и другие приключения Шурика|Operatsiya Y|1965|Комедия|Леонид Гайдай|Александр Демьяненко, Юрий Никулин, Георгий Вицин|95|light|Ирония судьбы, или С лёгким паром!|Три новеллы о студенте Шурике, включая историю с охраной склада от Труса, Балбеса и Бывалого.|su
+Покровские ворота|Pokrovskie vorota|1982|Комедия,Мелодрама|Михаил Козаков|Олег Меньшиков, Леонид Броневой, Инна Ульянова|136|cozy|Ирония судьбы, или С лёгким паром!|Москва 1950-х: студент Костик и обитатели шумной коммуналки у Покровских ворот.|su
+Любовь и голуби|Lyubov i golubi|1984|Комедия,Мелодрама|Владимир Меньшов|Александр Михайлов, Нина Дорошина, Людмила Гурченко|107|cozy|Ирония судьбы, или С лёгким паром!|Деревенский мужик на курорте увлекается столичной дамой и уходит из семьи, но не насовсем.|su
+`.trim().split('\n');
+
+// films from the marked list that neither of you has seen (or Nadia wants): id|minutes|mood|anchor
+const FROM_LIST_RAW = `
+the-truman-show-1998|103|cozy|Форрест Гамп
+notting-hill-1999|124|cozy|Красотка
+psycho-1960|109|tense|Окно во двор
+poor-things-2023|141|think|Субстанция
+jaws-1975|124|tense|Тихое место
+anatomy-of-a-fall-2023|151|think|Остров проклятых
+in-bruges-2008|107|light|Джентльмены
+heat-1995|170|tense|Крёстный отец
+goodfellas-1990|146|tense|Крёстный отец
+ex-machina-2014|108|think|Прибытие
+gravity-2013|91|tense|Марсианин
+life-is-beautiful-1997|116|cozy|1+1
+the-king-s-speech-2010|118|cozy|Игра в имитацию
+mission-impossible-fallout-2018|147|epic|Казино «Рояль»
+fargo-1996|98|light|Достать ножи
+the-secret-in-their-eyes-2009|129|think|Остров проклятых
+the-lives-of-others-2006|137|think|Игра в имитацию
+oldboy-2003|120|tense|Семь
+children-of-men-2006|109|tense|Безумный Макс: Дорога ярости
+conclave-2024|120|tense|Достать ножи
+run-lola-run-1998|81|light|Начало
+pan-s-labyrinth-2006|118|think|Ходячий замок
+the-terminal-2004|128|cozy|Поймай меня, если сможешь
+the-hunt-2012|115|think|Ещё по одной
+hacksaw-ridge-2016|139|epic|Гладиатор
+braveheart-1995|178|epic|Гладиатор
+moulin-rouge-2001|127|epic|Великий Гэтсби
+before-sunrise-1995|101|cozy|Дневник памяти
+past-lives-2023|106|think|Ла-Ла Ленд
+marriage-story-2019|137|think|Ла-Ла Ленд
+the-banshees-of-inisherin-2022|114|think|Ещё по одной
+one-flew-over-the-cuckoo-s-nest-1975|133|think|Зелёная миля
+american-beauty-1999|122|think|Бойцовский клуб
+sicario-2015|121|tense|Семь
+scarface-1983|170|tense|Крёстный отец
+city-of-god-2002|130|tense|Американская история X
+the-thing-1982|109|tense|Тихое место
+the-exorcist-1973|122|tense|Молчание ягнят
+hereditary-2018|127|tense|Прочь
+midsommar-2019|148|tense|Прочь
+schindler-s-list-1993|195|think|Зелёная миля
+the-pianist-2002|150|think|Игра в имитацию
+kin-dza-dza-1986|135|think|Пятый элемент
+ivan-vasilievich-menyaet-professiyu-1973|88|light|Назад в будущее
+sluzhebny-roman-1977|159|cozy|Дьявол носит Prada
+dzhentlmeny-udachi-1971|88|light|Мальчишник в Вегасе
+brilliantovaya-ruka-1968|100|light|Джентльмены
+moskva-slezam-ne-verit-1979|150|cozy|Форрест Гамп
+`.trim().split('\n');
+
+const EN_TITLE = { 'Intouchables': 'The Intouchables', 'Amelie': 'Amélie', 'Leon: The Professional': 'Léon: The Professional', 'Star Wars': 'Star Wars: A New Hope' };
+const displayTitle = m => m.ru_origin ? m.ru : (EN_TITLE[m.orig] || m.orig);
+for (const m of MOVIES) m.title = displayTitle(m);
+const BY_RU = Object.fromEntries(MOVIES.map(m => [m.ru, m]));
+
+const MOODS = { light: 'Лёгкое', cozy: 'Душевное', tense: 'Напряжённое', epic: 'Зрелищное', think: 'На подумать' };
+const CANDS = [];
+for (const line of PICKS_RAW) {
+  const p = line.split('|').map(s => s.trim());
+  const [ru, orig, year, genres, dir, cast, min, mood, anchor, desc, su] = p;
+  const m = { id: 'p-' + slug(orig, year), ru, orig, year: +year, genres: genres.split(','), dir, cast, runtime: +min, mood, anchor, desc, ru_origin: su === 'su', fresh: true };
+  m.title = displayTitle(m);
+  CANDS.push(m);
+}
+for (const line of FROM_LIST_RAW) {
+  const [id, min, mood, anchor] = line.split('|').map(s => s.trim());
+  const base = BY_ID[id]; if (!base) continue;
+  CANDS.push(Object.assign(Object.create(base), { runtime: +min, mood, anchor, fresh: false }));
+}
+const CAND_BY_ID = Object.fromEntries(CANDS.map(m => [m.id, m]));
+const anchorTitles = m => (m.anchor || '').split(';').map(s => s.trim()).filter(Boolean).map(a => BY_RU[a] ? BY_RU[a].title : a);
+const fmtMin = n => n ? `${Math.floor(n / 60)} ч ${String(n % 60).padStart(2, '0')} мин` : '';
+
 /* ---------- state ---------- */
-const LS_R = 'chto-posmotrim.ratings.v1', LS_W = 'chto-posmotrim.who';
+const LS_R = 'chto-posmotrim.ratings.v1', LS_W = 'chto-posmotrim.who', LS_P = 'chto-posmotrim.picks.v1', LS_F = 'chto-posmotrim.filters.v1';
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
-let ratings = lsGet(LS_R, {});           // id -> {nadia, anton}
+let ratings = lsGet(LS_R, {});           // id -> {nadia, anton}  (marks on the 222 list)
+let picks = lsGet(LS_P, {});             // candidate id -> {nadia, anton}: yes | maybe | no | seen
 let who = lsGet(LS_W, 'nadia');
-let view = 'rate';
+let view = 'pick';
 let listFilter = 'like';
+let filtersOpen = false;
+const F0 = { g: [], d: [], m: [], len: [] };
+let F = Object.assign({}, F0, lsGet(LS_F, {}));
 const history = [];
-const dirty = new Set();
-let db = null, cloudReady = false;
+const dirty = { ratings: new Set(), picks: new Set() };
+let db = null, cloudReady = { ratings: false, picks: false };
 
 const VALS = ['like','want','dislike','unseen'];
 const label = (v, w = who) => ({
   like:'Понравилось', dislike:'Не понравилось', want:'Хочу посмотреть',
   unseen: w === 'nadia' ? 'Не смотрела' : 'Не смотрел'
 })[v];
-const STAMP = { like:'Понравилось', dislike:'Мимо', want:'Хочу', unseen:'Не видел' };
+const STAMP_RATE = { like:'Понравилось', dislike:'Мимо', want:'Хочу', unseen:'Не видел' };
+const STAMP_PICK = { like:'Хочу', dislike:'Не хочу', want:'Можно', unseen:'Видели' };
+const PICK_OF = { like:'yes', want:'maybe', dislike:'no', unseen:'seen' };
 const COLOR = { like:'var(--like)', dislike:'var(--nope)', want:'var(--want)', unseen:'var(--skip)' };
+const other = w => w === 'nadia' ? 'anton' : 'nadia';
+const NAME = { nadia: 'Надя', anton: 'Антон' };
 
 const $ = id => document.getElementById(id);
 const queue = () => MOVIES.filter(m => !(ratings[m.id] && ratings[m.id][who]));
 
+/* ---------- taste score ---------- */
+let scoreCache = null, scoreKey = '';
+function scores(){
+  const key = JSON.stringify(ratings).length + ':' + Object.keys(ratings).length;
+  if (scoreCache && key === scoreKey) return scoreCache;
+  const A = {};
+  for (const m of MOVIES) {
+    const r = ratings[m.id] || {};
+    for (const w of ['nadia', 'anton']) {
+      const v = r[w]; if (v !== 'like' && v !== 'dislike') continue;
+      for (const g of m.genres) { A[g] = A[g] || { nadia: [0, 0], anton: [0, 0] }; A[g][w][v === 'like' ? 0 : 1]++; }
+    }
+  }
+  const aff = (g, w) => { const x = A[g] && A[g][w]; if (!x) return .3; return (x[0] - 2 * x[1] + 1) / (x[0] + x[1] + 2); };
+  const S = {};
+  for (const m of CANDS) {
+    let s = 0;
+    for (const w of ['nadia', 'anton']) s += Math.min(...m.genres.map(g => aff(g, w))) * .4 + (m.genres.reduce((t, g) => t + aff(g, w), 0) / m.genres.length) * .6;
+    const r = ratings[m.id] || {};
+    if (r.nadia === 'want' || r.anton === 'want') s += .35;
+    if (m.fresh) s += .05;
+    S[m.id] = s;
+  }
+  scoreCache = S; scoreKey = key; return S;
+}
+
+/* ---------- filters ---------- */
+const DECADES = [['old','до 80-х'],['80','80-е'],['90','90-е'],['00','00-е'],['10','10-е'],['20','20-е']];
+const LENS = [['short','до 1 ч 45'],['mid','1 ч 45 – 2 ч 15'],['long','дольше 2 ч 15']];
+const decKey = y => y < 1980 ? 'old' : y < 1990 ? '80' : y < 2000 ? '90' : y < 2010 ? '00' : y < 2020 ? '10' : '20';
+const lenKey = n => n <= 105 ? 'short' : n <= 135 ? 'mid' : 'long';
+const GENRES = [...new Set(CANDS.flatMap(m => m.genres))].sort((a, b) => CANDS.filter(m => m.genres.includes(b)).length - CANDS.filter(m => m.genres.includes(a)).length);
+const passes = m =>
+  (!F.g.length || m.genres.some(g => F.g.includes(g))) &&
+  (!F.d.length || F.d.includes(decKey(m.year))) &&
+  (!F.m.length || F.m.includes(m.mood)) &&
+  (!F.len.length || F.len.includes(lenKey(m.runtime)));
+function pickQueue(){
+  const S = scores();
+  const other_ = w => w === 'nadia' ? 'anton' : 'nadia';
+  // films the other person already wants go first, then by taste score, mixing genres so the stack doesn't repeat
+  const boost = m => { const v = picks[m.id] && picks[m.id][other_(who)]; return v === 'yes' ? 2 : v === 'maybe' ? 1 : 0; };
+  const pool = CANDS.filter(m => passes(m) && !(picks[m.id] && picks[m.id][who])).sort((a, b) => boost(b) - boost(a) || S[b.id] - S[a.id]);
+  const out = [];
+  while (pool.length) {
+    const recent = out.slice(-2).map(m => m.genres[0]);
+    let i = pool.findIndex((m, k) => k < 8 && (boost(m) > 0 || !recent.includes(m.genres[0])));
+    if (i < 0) i = 0;
+    out.push(pool.splice(i, 1)[0]);
+  }
+  return out;
+}
+const isMatch = m => { const p = picks[m.id] || {}; const ok = v => v === 'yes' || v === 'maybe'; return ok(p.nadia) && ok(p.anton); };
+const matches = () => { const S = scores(); return CANDS.filter(isMatch).sort((a, b) => {
+  const pa = picks[a.id], pb = picks[b.id]; const sa = (pa.nadia === 'yes') + (pa.anton === 'yes'), sb = (pb.nadia === 'yes') + (pb.anton === 'yes');
+  return sb - sa || S[b.id] - S[a.id]; }); };
+function filterSummary(){
+  const parts = [...F.g, ...F.d.map(k => DECADES.find(x => x[0] === k)[1]), ...F.m.map(k => MOODS[k]), ...F.len.map(k => LENS.find(x => x[0] === k)[1])];
+  return parts.length ? parts.join(', ') : 'все фильмы';
+}
+
 /* ---------- storage ---------- */
 function setStatus(s, text){ const el = $('status'); el.dataset.s = s; el.textContent = text; }
 const chains = {};
-function persist(id){
-  lsSet(LS_R, ratings);
+function persist(coll, id){
+  const store = coll === 'ratings' ? ratings : picks;
+  lsSet(coll === 'ratings' ? LS_R : LS_P, store);
   if (!db) return;
-  chains[id] = (chains[id] || Promise.resolve()).then(async () => {
-    const b = ratings[id] || {};
+  const k = coll + '/' + id;
+  chains[k] = (chains[k] || Promise.resolve()).then(async () => {
+    const b = store[id] || {};
     const body = {};
     if (b.nadia) body.nadia = b.nadia;
     if (b.anton) body.anton = b.anton;
-    const ref = db.collection('ratings').doc(id);
+    const ref = db.collection(coll).doc(id);
     if (!body.nadia && !body.anton) await ref.delete();
-    else await ref.set({ ...body, title: BY_ID[id] ? BY_ID[id].ru : id, t: Date.now() });
-    dirty.delete(id);
+    else await ref.set({ ...body, title: (BY_ID[id] || CAND_BY_ID[id] || { ru: id }).ru, t: Date.now() });
+    dirty[coll].delete(id);
   }).catch(e => {
     if (e && e.code === 'permission-denied') setStatus('error', 'База отклонила запись — отметка сохранена только на этом устройстве');
     else setStatus('error', 'Не сохранилось в облако, попробую при следующей отметке');
@@ -1121,40 +1406,51 @@ const FB_CONFIG = {
   messagingSenderId: "325838284787",
   appId: "1:325838284787:web:8cc417af88c844fa5b9486"
 };
+function subscribe(coll, timer){
+  db.collection(coll).onSnapshot({ includeMetadataChanges: true }, snap => {
+    const cur = coll === 'ratings' ? ratings : picks;
+    const next = {};
+    for (const d of snap.docs) { const x = d.data() || {}; next[d.id] = { nadia: x.nadia, anton: x.anton }; }
+    if (!cloudReady[coll] && !snap.metadata.fromCache) {
+      cloudReady[coll] = true;
+      for (const id of Object.keys(cur)) if (!next[id] && (cur[id].nadia || cur[id].anton)) dirty[coll].add(id);
+    }
+    for (const id of dirty[coll]) next[id] = cur[id];
+    if (coll === 'ratings') ratings = next; else picks = next;
+    lsSet(coll === 'ratings' ? LS_R : LS_P, next);
+    if (cloudReady.ratings && cloudReady.picks) { clearTimeout(timer); setStatus('cloud', 'Общая база: Надя и Антон видят выбор друг друга'); }
+    if (cloudReady[coll]) for (const id of [...dirty[coll]]) persist(coll, id);
+    render();
+  }, () => { clearTimeout(timer); setStatus('error', 'База недоступна, отметки сохраняются локально'); });
+}
 async function connect(){
   try { if (window.firebase) { firebase.initializeApp(FB_CONFIG); db = firebase.firestore(); } } catch { db = null; }
   if (!db) { setStatus('local', 'Нет связи с базой — отметки хранятся только на этом устройстве'); return; }
   setStatus('local', 'Загружаю отметки…');
-  const timer = setTimeout(() => { if (!cloudReady) setStatus('error', 'База пока не отвечает, отметки сохраняются локально'); }, 10000);
-  db.collection('ratings').onSnapshot({ includeMetadataChanges: true }, snap => {
-    const next = {};
-    for (const d of snap.docs) { const x = d.data() || {}; next[d.id] = { nadia: x.nadia, anton: x.anton }; }
-    if (!cloudReady && !snap.metadata.fromCache) {
-      cloudReady = true; clearTimeout(timer);
-      for (const id of Object.keys(ratings)) if (!next[id] && BY_ID[id] && (ratings[id].nadia || ratings[id].anton)) dirty.add(id);
-    }
-    for (const id of dirty) next[id] = ratings[id];
-    ratings = next;
-    lsSet(LS_R, ratings);
-    if (cloudReady) { setStatus('cloud', 'Общая база: Надя и Антон видят отметки друг друга'); for (const id of [...dirty]) persist(id); }
-    render();
-  }, () => { clearTimeout(timer); setStatus('error', 'База недоступна, отметки сохраняются локально'); });
+  const timer = setTimeout(() => { if (!(cloudReady.ratings && cloudReady.picks)) setStatus('error', 'База пока не отвечает, отметки сохраняются локально'); }, 10000);
+  subscribe('ratings', timer);
+  subscribe('picks', timer);
 }
 
 /* ---------- actions ---------- */
-function setMark(id, w, v){
-  const cur = { ...(ratings[id] || {}) };
+function setVal(coll, id, w, v){
+  const store = coll === 'ratings' ? ratings : picks;
+  const cur = { ...(store[id] || {}) };
   if (v) cur[w] = v; else delete cur[w];
-  ratings[id] = cur;
-  dirty.add(id);
-  persist(id);
+  store[id] = cur;
+  dirty[coll].add(id);
+  persist(coll, id);
 }
-let busy = false;
+let busy = false, flash = null, flashOn = false;
 function rate(v){
-  const top = queue()[0];
-  if (!top || busy) return;
+  if (busy) return;
+  flashOn = false;
+  const isPick = view === 'pick';
+  const top = (isPick ? pickQueue() : queue())[0];
+  if (!top) return;
   busy = true;
-  history.push({ id: top.id, w: who, prev: ratings[top.id] && ratings[top.id][who] });
+  const coll = isPick ? 'picks' : 'ratings', store = isPick ? picks : ratings;
+  history.push({ coll, id: top.id, w: who, prev: store[top.id] && store[top.id][who] });
   const card = document.querySelector('.card.top');
   const fly = { like:'translate(140%,10%) rotate(22deg)', dislike:'translate(-140%,10%) rotate(-22deg)',
                 want:'translate(0,-130%) rotate(-4deg)', unseen:'translate(0,130%) rotate(4deg)' }[v];
@@ -1163,86 +1459,162 @@ function rate(v){
     card.style.transition = 'transform .28s ease-in';
     card.style.transform = fly;
   }
-  setTimeout(() => { setMark(top.id, who, v); busy = false; render(); }, card ? 260 : 0);
+  setTimeout(() => {
+    const val = isPick ? PICK_OF[v] : v;
+    setVal(coll, top.id, who, val);
+    if (isPick && isMatch(top)) flash = top;
+    busy = false; render();
+  }, card ? 260 : 0);
 }
 function undo(){
   const h = history.pop(); if (!h) return;
-  if (h.w !== who) setWho(h.w);
-  setMark(h.id, h.w, h.prev);
+  if (h.w !== who) { who = h.w; lsSet(LS_W, who); }
+  if (h.coll === 'picks') view = 'pick'; else if (view !== 'list') view = 'rate';
+  setVal(h.coll, h.id, h.w, h.prev);
   render(true);
 }
 function setWho(w){ who = w; lsSet(LS_W, w); render(true); }
 
 /* ---------- rendering ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const enc = encodeURIComponent;
+const kpUrl = m => `https://www.kinopoisk.ru/index.php?kp_query=${enc(m.ru + ' ' + m.year)}`;
+const imdbUrl = m => `https://www.imdb.com/find/?q=${enc(m.orig + ' ' + m.year)}`;
 function decadeLabel(y){ return y < 1960 ? 'классика до 60-х' : (Math.floor(y / 10) * 10) + '-е'; }
 function cardHTML(m, cls){
   const [c1] = PALETTE[m.genres[0]] || PALETTE['Драма'];
   const ink = mix(c1, '#0b0709', .55);
-  const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const enc = encodeURIComponent;
-  const showOrig = !m.ru_origin && m.orig.toLowerCase() !== m.ru.toLowerCase();
-  return `<div class="card ${cls}" data-id="${m.id}" style="--ink:${ink}">
+  const isPick = view === 'pick';
+  const ST = isPick ? STAMP_PICK : STAMP_RATE;
+  const anchors = isPick ? anchorTitles(m) : [];
+  const other_ = isPick && picks[m.id] && picks[m.id][other(who)];
+  const otherNote = other_ === 'yes' || other_ === 'maybe' ? `<span class="pill">${NAME[other(who)]} ${other_ === 'yes' ? 'хочет' : 'не против'}</span>` : '';
+  return `<div class="card ${cls}${isPick ? ' pick' : ''}" data-id="${m.id}" style="--ink:${ink}">
     <div class="art">
       <canvas data-id="${m.id}" aria-hidden="true"></canvas>
       <div class="art-meta">
         <div><div class="year">${m.year}</div><div class="decade">${decadeLabel(m.year)}</div></div>
         <div class="art-right">
-          <a class="poster-link" href="https://www.kinopoisk.ru/index.php?kp_query=${enc(m.ru + ' ' + m.year)}" target="_blank" rel="noopener">Постер ↗</a>
+          <a class="poster-link" href="${kpUrl(m)}" target="_blank" rel="noopener">Постер ↗</a>
           ${m.ru_origin ? '<span class="origin">СССР / Россия</span>' : ''}
+          ${otherNote}
         </div>
       </div>
     </div>
     <div class="info">
-      <div class="p-title">${esc(m.ru)}</div>
-      ${showOrig ? `<div class="p-orig">${esc(m.orig)}</div>` : ''}
+      <div class="p-title">${esc(m.title)}</div>
+      ${isPick ? `<div class="p-meta">${fmtMin(m.runtime)} · ${MOODS[m.mood] || ''}</div>` : ''}
       ${m.desc ? `<div class="p-desc">${esc(m.desc)}</div>` : ''}
+      ${anchors.length ? `<div class="p-why">Если понравилось: <b>${esc(anchors.join(', '))}</b></div>` : ''}
       ${m.cast ? `<div class="p-cast"><b>${m.genres.includes('Анимация') ? 'студия' : 'в ролях'}</b>${esc(m.cast)}</div>` : ''}
       <div class="p-dir"><b>реж.</b>${esc(m.dir)}</div>
       <div class="p-foot">
         <div class="chips">${m.genres.map(g => `<span>${g}</span>`).join('')}</div>
         <div class="links">
-          <a href="https://www.kinopoisk.ru/index.php?kp_query=${enc(m.ru + ' ' + m.year)}" target="_blank" rel="noopener">Кинопоиск ↗</a>
-          <a href="https://www.imdb.com/find/?q=${enc(m.orig + ' ' + m.year)}" target="_blank" rel="noopener">IMDb ↗</a>
+          <a href="${kpUrl(m)}" target="_blank" rel="noopener">Кинопоиск ↗</a>
+          <a href="${imdbUrl(m)}" target="_blank" rel="noopener">IMDb ↗</a>
         </div>
       </div>
     </div>
-    <div class="stamp like">${STAMP.like}</div><div class="stamp dislike">${STAMP.dislike}</div>
-    <div class="stamp want">${STAMP.want}</div><div class="stamp unseen">${who === 'nadia' ? 'Не видела' : 'Не видел'}</div>
+    <div class="stamp like">${ST.like}</div><div class="stamp dislike">${ST.dislike}</div>
+    <div class="stamp want">${ST.want}</div><div class="stamp unseen">${isPick ? ST.unseen : (who === 'nadia' ? 'Не видела' : 'Не видел')}</div>
   </div>`;
+}
+
+function renderFilters(){
+  $('ftoggle').innerHTML = `<span>Фильтры</span><b>${esc(filterSummary())}</b><i>${filtersOpen ? '▲' : '▼'}</i>`;
+  $('ftoggle').setAttribute('aria-expanded', filtersOpen);
+  $('fpanel').hidden = !filtersOpen;
+  if (!filtersOpen) return;
+  const group = (key, title, items) => `<div class="fgroup"><div class="ftitle">${title}</div><div class="fchips">${
+    items.map(([k, l]) => `<button data-fk="${key}" data-fv="${esc(k)}" aria-pressed="${F[key].includes(k)}">${esc(l)}</button>`).join('')}</div></div>`;
+  const left = CANDS.filter(passes).length;
+  $('fpanel').innerHTML =
+    group('m', 'Настроение', Object.entries(MOODS)) +
+    group('g', 'Жанр', GENRES.map(g => [g, g])) +
+    group('d', 'Десятилетие', DECADES) +
+    group('len', 'Длительность', LENS) +
+    `<div class="factions"><button id="freset">Сбросить</button><button id="fdone" class="primary">Показать ${left}</button></div>`;
 }
 
 let shownKey = '';
 function render(force){
   document.querySelectorAll('[data-who]').forEach(b => b.setAttribute('aria-pressed', b.dataset.who === who));
   document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === view));
-  $('rateView').hidden = view !== 'rate';
-  $('rateView').style.display = view === 'rate' ? 'contents' : 'none';
+  const swipe = view === 'pick' || view === 'rate';
+  $('rateView').hidden = !swipe;
+  $('rateView').style.display = swipe ? 'contents' : 'none';
   $('listView').hidden = view !== 'list';
+  $('matchView').hidden = view !== 'match';
+  $('pickBar').hidden = view !== 'pick';
+  const ms = matches();
+  $('matchN').textContent = ms.length;
 
-  const q = queue();
-  const done = MOVIES.length - q.length;
-  $('cnt').textContent = `${done} / ${MOVIES.length}`;
-  $('bar').style.width = (done / MOVIES.length * 100) + '%';
-  $('unseenLbl').textContent = label('unseen');
-  $('hint').textContent = `Свайп: → понравилось, ← нет, ↑ хочу, ↓ ${who === 'nadia' ? 'не смотрела' : 'не смотрел'}`;
+  const q = view === 'pick' ? pickQueue() : queue();
+  if (view === 'pick') {
+    const pool = CANDS.filter(passes).length;
+    $('metaText').innerHTML = `Осталось <span class="count">${q.length}</span> из ${pool} под фильтры`;
+    $('bar').style.width = (pool ? (pool - q.length) / pool * 100 : 0) + '%';
+    renderFilters();
+  } else {
+    const done = MOVIES.length - queue().length;
+    $('metaText').innerHTML = `Отмечено <span class="count">${done} / ${MOVIES.length}</span>`;
+    $('bar').style.width = (done / MOVIES.length * 100) + '%';
+  }
+  const L = view === 'pick'
+    ? { dislike: 'Не хочу', unseen: 'Уже видели', want: 'Можно', like: 'Хочу' }
+    : { dislike: 'Не понра&shy;вилось', unseen: label('unseen'), want: 'Хочу посмотреть', like: 'Понра&shy;вилось' };
+  for (const k of VALS) $('b-' + k).querySelector('span').innerHTML = L[k];
+  $('hint').textContent = view === 'pick'
+    ? 'Свайп: → хочу, ← не хочу, ↑ можно, ↓ уже видели'
+    : `Свайп: → понравилось, ← нет, ↑ хочу, ↓ ${who === 'nadia' ? 'не смотрела' : 'не смотрел'}`;
   $('undo').disabled = history.length === 0;
   document.querySelectorAll('.act').forEach(b => b.disabled = q.length === 0);
 
-  if (view === 'rate') {
-    const key = who + ':' + (q[0] ? q[0].id : '-') + ':' + (q[1] ? q[1].id : '-');
+  if (swipe && flashOn && !force) return;
+  if (swipe) {
+    flashOn = false;
+    const key = view + ':' + who + ':' + (q[0] ? q[0].id : '-') + ':' + (q[1] ? q[1].id : '-') + ':' + (flash ? flash.id : '');
     if (force || key !== shownKey) {
       shownKey = key;
       const stage = $('stage');
+      if (flash) {
+        const m = flash; flash = null;
+        stage.innerHTML = `<div class="done match"><div class="spark">Совпадение</div><h2>${esc(m.title)}</h2>
+          <p>Вы оба выбрали этот фильм. ${fmtMin(m.runtime)}.</p>
+          <div class="factions"><button id="toMatches" class="primary">Все совпадения</button><button id="keepGoing">Свайпать дальше</button></div></div>`;
+        shownKey = 'flash'; flashOn = true;
+        return;
+      }
       if (!q.length) {
-        stage.innerHTML = `<div class="done"><h2>Всё отмечено</h2>
-          <p>${who === 'nadia' ? 'Надя' : 'Антон'}, база собрана. Напиши в чате «собери подборку» — я учту, что понравилось, и не буду предлагать уже просмотренное.</p></div>`;
+        stage.innerHTML = view === 'pick'
+          ? `<div class="done"><h2>${CANDS.filter(passes).length ? 'Под эти фильтры всё просмотрено' : 'Под эти фильтры ничего нет'}</h2>
+             <p>${ms.length ? `Совпадений: ${ms.length}. Загляните во вкладку «Совпадения».` : 'Смените фильтры или дождитесь, пока второй тоже посвайпает.'}</p></div>`
+          : `<div class="done"><h2>Всё отмечено</h2><p>Переходите в «Подбор»: там фильмы, которые вы ещё не видели.</p></div>`;
       } else {
         stage.innerHTML = (q[1] ? cardHTML(q[1], 'next') : '') + cardHTML(q[0], 'top');
         bindDrag(stage.querySelector('.card.top'));
-        stage.querySelectorAll('canvas[data-id]').forEach(cv => { try { drawCover(cv, BY_ID[cv.dataset.id]); } catch {} });
+        stage.querySelectorAll('canvas[data-id]').forEach(cv => { try { drawCover(cv, BY_ID[cv.dataset.id] || CAND_BY_ID[cv.dataset.id]); } catch {} });
       }
     }
-  } else renderList();
+  } else if (view === 'list') renderList();
+  else renderMatches(ms);
+}
+
+function renderMatches(ms){
+  const waiting = CANDS.filter(m => { const p = picks[m.id] || {}; const mine = p[who], theirs = p[other(who)];
+    return (theirs === 'yes' || theirs === 'maybe') && !mine && passes(m); }).length;
+  $('matchHead').innerHTML = ms.length
+    ? `<b>${ms.length}</b> ${ms.length === 1 ? 'фильм хотите' : 'фильмов хотите'} оба. Сверху те, где оба нажали «Хочу».`
+    : 'Пока совпадений нет. Свайпайте в «Подборе» оба: сюда попадут фильмы, которые выбрали и Надя, и Антон.';
+  $('matchWait').textContent = waiting ? `${NAME[other(who)]} уже выбрал${who === 'nadia' ? '' : 'а'} ${waiting} фильм(ов), которые ты ещё не свайпал${who === 'nadia' ? 'а' : ''} — они первыми в «Подборе».` : '';
+  $('matchList').innerHTML = ms.map(m => { const p = picks[m.id]; const both = p.nadia === 'yes' && p.anton === 'yes';
+    return `<div class="row mrow">
+      <span class="sw" style="background:${both ? 'var(--like)' : 'var(--want)'}"></span>
+      <div class="t"><b>${esc(m.title)}</b><small>${m.year} · ${fmtMin(m.runtime)} · ${m.genres.join(', ')}</small>
+        <small class="why">${both ? 'Оба: хочу' : 'Хочу + можно'}</small></div>
+      <div class="rlinks"><a href="${kpUrl(m)}" target="_blank" rel="noopener">Кинопоиск</a><a href="${imdbUrl(m)}" target="_blank" rel="noopener">IMDb</a></div>
+    </div>`; }).join('');
 }
 
 function renderList(){
@@ -1251,10 +1623,10 @@ function renderList(){
   $('filters').innerHTML = VALS.map(v =>
     `<button data-f="${v}" aria-pressed="${v === listFilter}">${label(v)}<span class="n">${counts[v]}</span></button>`).join('');
   const items = MOVIES.filter(m => ratings[m.id] && ratings[m.id][who] === listFilter)
-    .sort((a, b) => a.ru.localeCompare(b.ru, 'ru'));
+    .sort((a, b) => a.title.localeCompare(b.title));
   $('list').innerHTML = items.length ? items.map(m => `<div class="row">
       <span class="sw" style="background:${COLOR[listFilter]}"></span>
-      <div class="t"><b>${m.ru}</b><small>${m.year} · ${m.genres.join(', ')}</small></div>
+      <div class="t"><b>${esc(m.title)}</b><small>${m.year} · ${m.genres.join(', ')}</small></div>
       <button data-reset="${m.id}">Вернуть в очередь</button></div>`).join('')
     : `<div class="empty">Здесь пока пусто</div>`;
 }
@@ -1291,17 +1663,28 @@ function bindDrag(card){
 /* ---------- wiring ---------- */
 document.querySelectorAll('.act').forEach(b => b.addEventListener('click', () => rate(b.dataset.v)));
 document.querySelectorAll('[data-who]').forEach(b => b.addEventListener('click', () => setWho(b.dataset.who)));
-document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.view; render(true); }));
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.view; filtersOpen = false; render(true); }));
 $('undo').addEventListener('click', undo);
+$('ftoggle').addEventListener('click', () => { filtersOpen = !filtersOpen; renderFilters(); });
+$('fpanel').addEventListener('click', e => {
+  const b = e.target.closest('[data-fk]');
+  if (b) { const k = b.dataset.fk, v = b.dataset.fv; F[k] = F[k].includes(v) ? F[k].filter(x => x !== v) : [...F[k], v]; lsSet(LS_F, F); render(true); return; }
+  if (e.target.closest('#freset')) { F = JSON.parse(JSON.stringify(F0)); lsSet(LS_F, F); render(true); return; }
+  if (e.target.closest('#fdone')) { filtersOpen = false; render(true); }
+});
+$('stage').addEventListener('click', e => {
+  if (e.target.closest('#toMatches')) { view = 'match'; render(true); }
+  else if (e.target.closest('#keepGoing')) { render(true); }
+});
 $('filters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { listFilter = b.dataset.f; renderList(); } });
 $('list').addEventListener('click', e => {
   const b = e.target.closest('[data-reset]'); if (!b) return;
   const id = b.dataset.reset;
-  history.push({ id, w: who, prev: ratings[id] && ratings[id][who] });
-  setMark(id, who, undefined); render(true);
+  history.push({ coll: 'ratings', id, w: who, prev: ratings[id] && ratings[id][who] });
+  setVal('ratings', id, who, undefined); render(true);
 });
 document.addEventListener('keydown', e => {
-  if (view !== 'rate' || e.metaKey || e.ctrlKey) return;
+  if ((view !== 'rate' && view !== 'pick') || e.metaKey || e.ctrlKey || filtersOpen) return;
   const map = { ArrowRight:'like', ArrowLeft:'dislike', ArrowUp:'want', ArrowDown:'unseen' };
   if (map[e.key]) { e.preventDefault(); rate(map[e.key]); }
   else if (e.key === 'Backspace' || e.key === 'z') { e.preventDefault(); undo(); }
